@@ -10,7 +10,7 @@ Checkers Minds is a simple game of checkers that can be played by humans or AIs.
 ## Getting Started
 To play Checkers Minds, first install the dependencies:
  * using pipenv:
-   `pipevn install`
+   `pipenv install`
  * using pip:
   `pip install -r requirements.txt`
 
