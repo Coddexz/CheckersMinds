@@ -2,7 +2,7 @@ from checkers import Checkers
 from minds import MindQLearning
 
 
-Q_LEARNING_TRAINING_GAMES = 10000
+Q_LEARNING_TRAINING_GAMES = 1000
 MINIMAX_MAX_DEPTH = 4
 
 
@@ -50,6 +50,7 @@ def main():
             print('Invalid input. Please enter a number.')
             
     training = False
+    ai_model_first, ai_model_second = None, None
     if game_type == 0:
         training = True
         
@@ -103,20 +104,23 @@ def main():
                 ai_players = ((True, False), (ai_model_first, None))
     else:
         ai_players = ((False, False), (None, None))
-        
-    # Train AI models that need that
-    models = dict()
     
-    if ai_model_first =='minimax' or ai_model_second == 'minimax':
-        models['minimax'] = MINIMAX_MAX_DEPTH
+    if game_type == 4:
+        models = None
+    else:
+        # Train AI models that need that
+        models = dict()
         
-    if ai_model_first == 'q_learning' or ai_model_second == 'q_learning':
-        ai_q_learning = MindQLearning()
-        for n in range(Q_LEARNING_TRAINING_GAMES):
-            print(f'Q_learning playing training game {n + 1}')
-            game = Checkers()
-            ai_q_learning.train(game=game)
-        models['q_learning'] = ai_q_learning
+        if ai_model_first =='minimax' or ai_model_second == 'minimax':
+            models['minimax'] = MINIMAX_MAX_DEPTH
+            
+        if ai_model_first == 'q_learning' or ai_model_second == 'q_learning':
+            ai_q_learning = MindQLearning()
+            for n in range(Q_LEARNING_TRAINING_GAMES):
+                print(f'Q_learning model playing training game {n + 1}')
+                game = Checkers()
+                ai_q_learning.train(game=game)
+            models['q_learning'] = ai_q_learning
     
     if training:
         while True:
