@@ -5,13 +5,10 @@ from time import time, sleep
 import os, platform
 
 
-MINIMAX_MAX_DEPTH = 4
-
-"""
-Representation of the game
-"""
-
 class Checkers:
+    """
+    Representation of the game
+    """
     
     def __init__(self, height=10, width=10, board=None, pieces_dark=20, pieces_light=20,
                  ai_players=((False, True),(None, 'random')), pieces_turn=True, board_history=None):
@@ -154,15 +151,16 @@ class Checkers:
             return 1
         # The method has been successfully finished
         return 0
-    """
-    Return a dict with every possible move for the current player
-    Store moves according to this schema:
-    {piece: {((move), value)}}
-    value = False if the field is empty else value = True
-    Jumping over has precedence over moving to an empty field
-    multiple moves => {piece: {(((move_1), move_2), value)}}
-    """     
+ 
     def set_possible_moves(self):
+        """
+        Return a dict with every possible move for the current player
+        Store moves according to this schema:
+        {piece: {((move), value)}}
+        value = False if the field is empty else value = True
+        Jumping over has precedence over moving to an empty field
+        multiple moves => {piece: {(((move_1), move_2), value)}}
+        """    
         
         # Get the right player
         player = self.pieces_turn
@@ -470,7 +468,7 @@ class Checkers:
         return possible_moves
     
     # Let's play a game
-    def play(self):
+    def play(self, models):
         
         # Check the state of the game
         computer_system = platform.system()
@@ -492,31 +490,40 @@ class Checkers:
                 ai_settings = ('Dark', dark_ai[1]) if self.pieces_turn else ('Light', light_ai[1])
                 print(f'{ai_settings[0]} AI is making a move ...')
                 
-                # AI makes always random moves
-                if ai_settings[1] == 'random':
-                    sleep(3)
-                    random_piece = random.choice(list(game_state[2].keys()))
-                    random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
-                    action, jump, piece = random_move_value[0], random_move_value[1], random_piece
-                
-                # Minimax algorithm
-                elif ai_settings[1] == 'minimax':
-                    # Record the time
-                    start_time_minimax = time()
-                    (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=MINIMAX_MAX_DEPTH,
-                                                                  alpha=float('-inf'), beta=float('inf'))
-                    end_time_minimax = time()
-                    time_spent_minimax = end_time_minimax - start_time_minimax
+                match ai_settings[1]:
                     
-                    # Wait for remaining time if time_spent is less than 3 sec
-                    if time_spent_minimax < 3.0:
-                        sleep(3.0 - time_spent_minimax)
+                    # AI makes always random moves
+                    case 'random':
+                        sleep(3)
+                        random_piece = random.choice(list(game_state[2].keys()))
+                        random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
+                        action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+                
+                    # Minimax algorithm
+                    case 'minimax':
+                        # Record the time
+                        start_time_minimax = time()
+                        (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=models['minimax'],
+                                                                    alpha=float('-inf'), beta=float('inf'))
+                        end_time_minimax = time()
+                        time_spent_minimax = end_time_minimax - start_time_minimax
                         
-                    # Get the original piece to prevent problems
-                    original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
-                    for i in original_pieces:
-                        if piece.id == i.id:
-                            piece = i
+                        # Wait for remaining time if time_spent is less than 3 sec
+                        if time_spent_minimax < 3.0:
+                            sleep(3.0 - time_spent_minimax)
+                            
+                        # Get the original piece to prevent problems
+                        original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
+                        for i in original_pieces:
+                            if piece.id == i.id:
+                                piece = i
+                                
+                    case 'q_learning':
+                        sleep(2)
+                        (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
+                        
+                    case _:
+                        raise Exception('The AI model has been not found, play() cannot perform the operation')
                     
                 # Make the move
                 os.system('cls') if computer_system == 'Windows' else os.system('clear')
@@ -527,7 +534,7 @@ class Checkers:
                 self.board_history.append((self.board_to_tuple(), self.pieces_turn, self.pieces_counter))
                     
                 # Prepare game for the next player
-                self.pieces_turn = False if self.pieces_turn == True else True
+                self.pieces_turn = False if self.pieces_turn else True
                     
                 game_state = tuple(self.game_over_conditions())
         
@@ -542,30 +549,39 @@ class Checkers:
                 if self.pieces_turn == ai_turn:
                     print('AI is making a move ...')
                     
-                    if ai_kind == 'random':
-                        sleep(2)
-                            
-                        random_piece = random.choice(list(game_state[2].keys()))
-                        random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
-                        action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+                    match ai_kind:
                         
-                    elif ai_kind == 'minimax':
-                        # Record the time
-                        start_time_minimax = time()
-                        (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=MINIMAX_MAX_DEPTH,
-                                                                      alpha=float('-inf'), beta=float('inf'))
-                        end_time_minimax = time()
-                        time_spent_minimax = end_time_minimax - start_time_minimax
+                        case 'random':
+                            sleep(2)
+                                
+                            random_piece = random.choice(list(game_state[2].keys()))
+                            random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
+                            action, jump, piece = random_move_value[0], random_move_value[1], random_piece
                         
-                        # Wait for remaining time if time_spent is less than 3 sec
-                        if time_spent_minimax < 2.0:
-                            sleep(2.0 - time_spent_minimax)
+                        case 'minimax':
+                            # Record the time
+                            start_time_minimax = time()
+                            (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=models['minimax'],
+                                                                        alpha=float('-inf'), beta=float('inf'))
+                            end_time_minimax = time()
+                            time_spent_minimax = end_time_minimax - start_time_minimax
                             
-                        # Get the original piece to prevent problems
-                        original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
-                        for i in original_pieces:
-                            if piece.id == i.id:
-                                piece = i
+                            # Wait for remaining time if time_spent is less than 3 sec
+                            if time_spent_minimax < 2.0:
+                                sleep(2.0 - time_spent_minimax)
+                                
+                            # Get the original piece to prevent problems
+                            original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
+                            for i in original_pieces:
+                                if piece.id == i.id:
+                                    piece = i
+                                    
+                        case 'q_learning':
+                            sleep(2)
+                            (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
+                            
+                        case _:
+                            raise Exception('The AI model has been not found, play() cannot perform the operation')
 
                     os.system('cls') if computer_system == 'Windows' else os.system('clear')
                     print(f'AI moved {piece} to {action}\n')
@@ -604,7 +620,7 @@ class Checkers:
                 self.board_history.append((self.board_to_tuple(), self.pieces_turn, self.pieces_counter))
                 
                 # Prepare game for the next player
-                self.pieces_turn = False if self.pieces_turn == True else True
+                self.pieces_turn = False if self.pieces_turn else True
 
                 game_state = tuple(self.game_over_conditions())
                 
@@ -649,7 +665,7 @@ class Checkers:
                 print(f'player moved {piece} to {action}\n')
                 
                 # Prepare game for the next player
-                self.pieces_turn = False if self.pieces_turn == True else True
+                self.pieces_turn = False if self.pieces_turn else True
 
                 game_state = tuple(self.game_over_conditions())
                 
@@ -664,7 +680,49 @@ class Checkers:
                 print('\nDark pieces won.\n')
         return game_state[1]
     
-    def train(self):
+    def single_move(self, models):
+        """
+        Use the right AI to make a single move on the board.
+        Returns 0 if the game is still playable, 1 if is finished
+        """
+        game_state = self.game_over_conditions()
+        
+        # If the game has finished
+        if not game_state[0]:
+            return 1
+        
+        # Get the right AI model
+        ai_kind = self.ai_players[1][0] if self.pieces_turn else self.ai_players[1][1]
+        
+        match ai_kind:
+            case 'random':
+                random_piece = random.choice(list(game_state[2].keys()))
+                random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
+                action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+            case 'minimax':
+                (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=models['minimax'],
+                                                                                    alpha=float('-inf'), beta=float('inf'))
+            case 'q_learning':
+                (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
+            case 'deep_q_learning':
+                pass
+            case _:
+                raise Exception('The AI model has been not found, single_move() cannot perform the operation')
+            
+        # Save the board
+        self.board_history.append((self.board_to_tuple(), self.pieces_turn, self.pieces_counter))
+        
+        # Prepare game for the next player
+        self.pieces_turn = False if self.pieces_turn else True
+
+        game_state = self.game_over_conditions()
+        
+        # If the game has finished
+        if not game_state[0]:
+            return 1
+        return 0
+    
+    def train(self, models):
         """
         AI plays against itself, printing only results.
         self.ai_player[0] must be both True
@@ -685,23 +743,30 @@ class Checkers:
                 
                 ai_settings = ('Dark', dark_ai[1]) if self.pieces_turn else ('Light', light_ai[1])
                 
-                # AI makes always random moves
-                if ai_settings[1] == 'random':
-                        
-                    random_piece = random.choice(list(game_state[2].keys()))
-                    random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
-                    action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+                match ai_settings[1]:
                     
-                # Minimax algorithm
-                elif ai_settings[1] == 'minimax':
-                    ai_minimax = MindMinimax()
-                    (piece, action, jump), _ = ai_minimax.minimax(game=self, game_state=game_state, max_depth=MINIMAX_MAX_DEPTH,
-                                                                  alpha=float('-inf'), beta=float('inf'))
-                    # Get the original piece to prevent problems
-                    original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
-                    for i in original_pieces:
-                        if piece.id == i.id:
-                            piece = i
+                    # AI makes always random moves
+                    case 'random':
+                        
+                        random_piece = random.choice(list(game_state[2].keys()))
+                        random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
+                        action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+                    
+                    # Minimax algorithm
+                    case 'minimax':
+                        (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=models['minimax'],
+                                                                    alpha=float('-inf'), beta=float('inf'))
+                        # Get the original piece to prevent problems
+                        original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
+                        for i in original_pieces:
+                            if piece.id == i.id:
+                                piece = i
+                    # Q-learning algorithm
+                    case 'q_learning':
+                        (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
+                        
+                    case _:
+                        raise Exception('The AI model has been not found, train() cannot perform the operation')
                     
                 # Make the move
                 self.make_move(action, jump, piece)  
@@ -710,7 +775,7 @@ class Checkers:
                 self.board_history.append((self.board_to_tuple(), self.pieces_turn, self.pieces_counter))
                     
                 # Prepare game for the next player
-                self.pieces_turn = False if self.pieces_turn == True else True
+                self.pieces_turn = False if self.pieces_turn else True
                     
                 game_state = tuple(self.game_over_conditions())
         return game_state[1]
@@ -781,15 +846,15 @@ class Checkers:
             return board_c
         return 0
         
-    """""
-    The game has ended if:
-        - a player has no valid moves (no pieces left or no valid moves) => the opposite player wins;
-        - one king vs one king game => draw;
-        - the same position repeats itself for the third time (not necessarily consecutive),
-        with the same player having the move each time (threefold).
-        When the game ends => returns (game_state=False, winner=1 or 0 or -1, possible_moves)
-    """
     def game_over_conditions(self):
+        """
+            The game has ended if:
+            - a player has no valid moves (no pieces left or no valid moves) => the opposite player wins;
+            - one king vs one king game => draw;
+            - the same position repeats itself for the third time (not necessarily consecutive),
+            with the same player having the move each time (threefold).
+            When the game ends => returns (game_state=False, winner=1 or 0 or -1, possible_moves)
+        """
         winner = 0
         possible_moves = self.set_possible_moves()
         
@@ -814,7 +879,7 @@ class Checkers:
             
                 for position in self.board_history:
                 
-                # # Alternative approach, iterate over only the most important should be checked => optimisation
+                # # Alternative approach, iterate over, only the most important should be checked => optimisation
                 # if position[2] == self.board_history[-1][2]:
                     position_sh = (position[0], position[1])
                     if repetition_count.get(position_sh):
@@ -845,17 +910,25 @@ class Checkers:
         # If still in game
         return (True, winner, possible_moves)
     
-    # Convert numpy array to tuple
+    # Convert numpy array to tuple with a simple representation
     def board_to_tuple(self, board=None):
-        if board is not None:
-            return tuple(tuple(sq for sq in row) for row in board)
-        return tuple(tuple(sq for sq in row) for row in self.board)
-    
-    # Convert tuple to numpy array
-    def tuple_to_board(self, board=None):
-        if board is not None:
-            return np.array([[sq for sq in row] for row in board])
-        return np.array([[sq for sq in row] for row in self.board])
+        """
+        Convert the board to a simple tuple representation of the game state.
+        + or - means black or white
+        1 or 2 means a man or a king
+        """
+        board_repr = []
+        if board is None:
+            board = self.board
+            
+        for row in board:
+            for square in row:
+                if square is None:
+                    board_repr.append(0)
+                    continue
+                sign = 1 if square.color else -1
+                board_repr.append(sign * 2) if square.king else board_repr.append(sign * 1)
+        return tuple(board_repr)
     
     def board_print(self, board=None):
         """

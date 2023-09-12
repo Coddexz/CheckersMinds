@@ -1,4 +1,9 @@
 from checkers import Checkers
+from minds import MindQLearning
+
+
+Q_LEARNING_TRAINING_GAMES = 10000
+MINIMAX_MAX_DEPTH = 4
 
 
 def main():
@@ -52,23 +57,39 @@ def main():
         ai_players = tuple()
         while True:
             print('\nChoose the AI model:')
-            print('1 --- random\n2 --- minimax')
+            print('1 --- random\n2 --- minimax\n3 --- q_learning\n4 --- deep_q_learning')
             try:
                 if game_type == 0 or game_type == 1 or game_type == 3:
                     ai_model_first = int(input('Choose the AI model for the first player.\n'))
-                    if ai_model_first in (1, 2):
-                        ai_model_first = 'random' if ai_model_first == 1 else 'minimax'
+                    if ai_model_first in (1, 2, 3, 4):
+                        match ai_model_first:
+                            case 1:
+                                ai_model_first = 'random'
+                            case 2:
+                                ai_model_first = 'minimax'
+                            case 3:
+                                ai_model_first = 'q_learning'
+                            case 4:
+                                ai_model_first = 'deep_q_learning'
                         if game_type == 3:
                             break
                     else:
-                        print('Please choose a number between 1 and 2.')
+                        print('Please choose a number between 1 and 4.')
                 if game_type == 0 or game_type == 1 or game_type == 2:
                     ai_model_second = int(input('Choose the AI model for the second player.\n'))
-                    if ai_model_second in (1, 2):
-                        ai_model_second = 'random' if ai_model_second == 1 else 'minimax'
+                    if ai_model_second in (1, 2, 3, 4):
+                        match ai_model_second:
+                            case 1:
+                                ai_model_second = 'random'
+                            case 2:
+                                ai_model_second = 'minimax'
+                            case 3:
+                                ai_model_second = 'q_learning'
+                            case 4:
+                                ai_model_second = 'deep_q_learning'
                         break
                     else:
-                        print('Please choose a number between 1 and 2.')
+                        print('Please choose a number between 1 and 4.')
             except Exception as e:
                 print(e)
                 print('Invalid input. Please enter a number.')
@@ -82,27 +103,41 @@ def main():
                 ai_players = ((True, False), (ai_model_first, None))
     else:
         ai_players = ((False, False), (None, None))
+        
+    # Train AI models that need that
+    models = dict()
+    
+    if ai_model_first =='minimax' or ai_model_second == 'minimax':
+        models['minimax'] = MINIMAX_MAX_DEPTH
+        
+    if ai_model_first == 'q_learning' or ai_model_second == 'q_learning':
+        ai_q_learning = MindQLearning()
+        for n in range(Q_LEARNING_TRAINING_GAMES):
+            print(f'Q_learning playing training game {n + 1}')
+            game = Checkers()
+            ai_q_learning.train(game=game)
+        models['q_learning'] = ai_q_learning
     
     if training:
         while True:
             try:
                 n = int(input('Please enter the number of training games you would like the AI to play.\n'))
-                if n < 0:
+                if n <= 0:
                     print('Please, enter a positive number')
                 else:
                     break
             except Exception as e:
                 print(e)
                 print('Invalid input. Please enter a number.')
-        train(n=n, dark_ai=ai_players[1][0], light_ai=ai_players[1][1])
-        input('Press any key to exit...')
+        train(models=models, n=n, dark_ai=ai_players[1][0], light_ai=ai_players[1][1])
+        input('Press enter to exit...')
         
     else:
         game = Checkers(ai_players=ai_players)
-        game.play()
-        input('Press any key to exit the game...')
+        game.play(models=models)
+        input('Press enter to exit the game...')
     
-def train(n, dark_ai='random', light_ai='random'):
+def train(models, n, dark_ai='random', light_ai='random'):
     """
     Play training games between AI.
     Prints only final score of all games.
@@ -113,7 +148,7 @@ def train(n, dark_ai='random', light_ai='random'):
     for i in range(1, n + 1):
         print(f'Playing {i} training game')
         game = Checkers(ai_players=ai_players)
-        game_score = game.train()
+        game_score = game.train(models=models)
         if game_score == 1:
             winners[0] += 1
         elif game_score == 0:
