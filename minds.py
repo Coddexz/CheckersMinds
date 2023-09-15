@@ -1,5 +1,8 @@
 from copy import deepcopy
 import random
+import tensorflow as tf
+import numpy as np
+from collections import deque
 
 
 """
@@ -331,3 +334,176 @@ class MindQLearning:
         # Change alpha
         if self.alpha > self.alpha_min:
             self.alpha *= self.alpha_dec
+            
+
+class MindDeepQLearning:
+    """
+    Deep q learning model
+    """
+    
+    def __init__(self, input_length, max_output_len, target_update_interval, model_path=None, alpha=0.01,
+                 gamma=0.7, eps_min=0.01, eps_max=1.0, eps_dec=0.9995):
+        """"
+        Initialise AI with a model, an alpha (learning rate),
+        gamma (discount factor) and epsilon rate.
+        Epsilon and alpha both have a max point, a decay rate, and a min point.
+        
+        The deep q-learning chooses the best action basing on a given state.
+            - state is a tuple composed of values e.g. (0, 1, 1, 1 ...) details => Checkers.board_to_tuple()
+            - action is a tuple composed of a piece, a move, and a boolean for
+            jumping over an enemy piece, e.g. action=(0_dark, (4, 3), False)
+        """
+        self.alpha = alpha
+        self.gamma = gamma
+        self.eps_min = eps_min
+        self.eps_max = eps_max
+        self.eps_dec = eps_dec
+        self.epsilon = self.eps_max
+        self.max_output_len = int(max_output_len)
+        self.target_update_interval = target_update_interval
+        self.target_update_counter = 0
+        self.train_counter = 0
+        # Initialise replay memory
+        self.replay_memory = deque(maxlen=10000)
+        
+        # If the model does not exist yet create a new one
+        if model_path is None:
+            self.q_network = self.build_q_network(input_length, max_output_len)
+            self.target_q_network = self.build_q_network(input_length, max_output_len)
+        else:
+            self.epsilon = -1
+            self.q_network = tf.keras.models.load_model(model_path)
+            self.target_q_network = tf.keras.models.clone_model(self.q_network)
+            self.target_q_network.set_weights(self.q_network.get_weights())
+    
+    def build_q_network(self, input_length, max_output_len):
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.Input(shape=(input_length,)),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dropout(0.5),
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dense(max_output_len, activation='linear')
+        ])
+        model.compile(loss='mean_squared_error', optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=self.alpha))
+        return model
+    
+    def update_target_network(self):
+        self.target_q_network.set_weights(self.q_network.get_weights())
+    
+    def choose_action(self, state, valid_actions):
+        """
+        Given a state and actions possible, return an action to take.
+        action = (piece, ((move), jump))
+        The same q value means any of options is an acceptable return value
+        """
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(len(valid_actions))
+        q_values = self.q_network.predict(state.reshape(1, -1))[0]
+        valid_q_values = [q_values[action] if action in range(len(valid_actions)) else float('-inf')
+                          for action in range(self.max_output_len)]
+        # print(valid_q_values)
+        return np.argmax(valid_q_values)
+    
+    def remember(self, state, turn_color, action, reward, next_state, done):
+        state_with_color = np.append(state, turn_color)
+        next_state_with_color = np.append(next_state, turn_color)
+        self.replay_memory.append((state_with_color, action, reward, next_state_with_color, done))
+
+        
+    def train(self, batch_size):
+        if len(self.replay_memory) != self.replay_memory.maxlen:
+            return
+        # Separate experiences into dark and light replay memories
+        dark_replay_memory = [experience for experience in self.replay_memory if experience[0][-1] == 1]
+        light_replay_memory = [experience for experience in self.replay_memory if experience[0][-1] == 0]
+
+        dark_batch = random.sample(dark_replay_memory, int(batch_size / 2))
+        light_batch = random.sample(light_replay_memory, int(batch_size / 2))
+
+        # Combine dark and light samples to create the batch
+        batch = dark_batch + light_batch
+        random.shuffle(batch)
+        
+        # Sample a batch from the replay memory
+        # dark_replay_memory = [i for i in self.replay_memory if self.replay_memory[0][-1] == 1]
+        # light_replay_memory = [i for i in self.replay_memory if self.replay_memory[0][-1] == 0]
+        # batch = random.sample(dark_replay_memory, batch_size / 2).append(random.sample(light_replay_memory, batch_size / 2))
+        # batch = random.sample(self.replay_memory, batch_size)
+        states, targets = [], []
+        
+        for state, action, reward, next_state, done in batch:
+            target = reward
+            if not done:
+                target = reward + self.gamma * np.amax(self.target_q_network.predict(next_state.reshape(1, -1))[0])
+                
+            target_q = self.q_network.predict(state.reshape(1, -1))
+            target_q[0][action] = target
+            
+            states.append(state)
+            targets.append(target_q[0])
+            
+        states = np.vstack(states)
+        targets = np.vstack(targets)
+            
+        self.q_network.fit(states, targets, epochs=1, verbose=0)
+            
+        # Update the target network periodically
+        self.target_update_counter += 1
+        if self.target_update_counter % self.target_update_interval == 0:
+            self.update_target_network()
+            self.target_update_counter = 0
+            
+        if self.epsilon > self.eps_min:
+            self.epsilon *= self.eps_dec
+            
+        # Clear replay_memory after reaching some threshold
+        self.train_counter += 1
+        if self.train_counter >= 313:
+            self.train_counter = 0
+            self.replay_memory.clear()
+                
+    def play(self, game):
+        
+        total_reward = 0
+        game_state = game.game_over_conditions()
+        
+
+        while game_state[0]:
+            state = game.board_to_tuple()
+            state_value = MindMinimax.utility(game.board)
+            turn_color = game.pieces_turn
+            actions_list = [(piece, action, jump)
+                              for piece in sorted(game_state[2].keys())
+                              for action, jump in sorted(game_state[2][piece])]
+            action_number = self.choose_action(np.append(state, turn_color), actions_list)
+            
+            # Perform the chosen action in the environment and observe the next state and reward
+            action = actions_list[action_number]
+            game.make_move(move=action[1], jump=action[2], piece=action[0])
+            next_state = game.board_to_tuple()
+            reward = reward = abs(MindMinimax.utility(game.board)) - abs(state_value)
+            
+            # Save board and prepare game for the next player
+            game.board_history.append((game.board_to_tuple(), game.pieces_turn, game.pieces_counter))
+            game.pieces_turn = False if game.pieces_turn else True
+            
+            # Check the state of the game
+            game_state = game.game_over_conditions()
+            
+            # Update reward if the game has ended
+            if not game_state[0]:
+                reward += GAME_WON + reward
+                
+            # Remember the experience
+            self.remember(state, turn_color, action_number, reward, next_state, done=not game_state[0])
+
+            # Train the model
+            self.train(batch_size=32)
+
+            total_reward += reward
+            
+        return total_reward
+    
+    def model_save(self, name):
+        self.q_network.save(name)

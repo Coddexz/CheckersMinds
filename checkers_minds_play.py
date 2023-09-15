@@ -1,9 +1,13 @@
 from checkers import Checkers
-from minds import MindQLearning
+from minds import MindQLearning, MindDeepQLearning
+import os
+import time
 
 
 Q_LEARNING_TRAINING_GAMES = 1000
 MINIMAX_MAX_DEPTH = 4
+DEEP_Q_NUM_EPISODES = 1000
+TRAIN_MORE_DEEP_Q = False
 
 
 def main():
@@ -121,6 +125,49 @@ def main():
                 game = Checkers()
                 ai_q_learning.train(game=game)
             models['q_learning'] = ai_q_learning
+            
+        if ai_model_first =='deep_q_learning' or ai_model_second == 'deep_q_learning':
+            deep_counter = 0
+            # If there is no model present
+            if not os.path.isdir('deep_q_model'):
+                time_start = time.time()
+                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
+                                                       max_output_len=Checkers().pieces_counter,
+                                                       target_update_interval=23)
+                # for n in range(DEEP_Q_NUM_EPISODES):
+                while True:
+                    print(f'Deep_q_learning model playing training game {deep_counter + 1}')
+                    game = Checkers()
+                    ai_deep_q_learning.play(game=game)
+                    elapsed_time = time.time() - time_start
+                    deep_counter += 1
+                    if elapsed_time >= 1800 * 3:
+                        break
+                ai_deep_q_learning.epsilon = -1
+                ai_deep_q_learning.model_save('deep_q_model')
+                models['deep_q_learning'] = ai_deep_q_learning
+            else:
+                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
+                                                       max_output_len=Checkers().pieces_counter,
+                                                       target_update_interval=23,
+                                                       model_path=os.path.join(os.getcwd(), 'deep_q_model'))
+                if TRAIN_MORE_DEEP_Q:
+                    time_start = time.time()
+                    deep_counter = 0
+                    ai_deep_q_learning.epsilon = 0.4
+                    while True:
+                        print(f'Deep_q_learning model playing training game {deep_counter + 1}')
+                        game = Checkers()
+                        ai_deep_q_learning.play(game=game)
+                        elapsed_time = time.time() - time_start
+                        deep_counter += 1
+                        if elapsed_time >= 1800 * 2:
+                            break
+                    ai_deep_q_learning.epsilon = -1
+                    ai_deep_q_learning.model_save('deep_q_model')
+                    
+                ai_deep_q_learning.epsilon = -1
+                models['deep_q_learning'] = ai_deep_q_learning
     
     if training:
         while True:
