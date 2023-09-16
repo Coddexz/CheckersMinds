@@ -12,6 +12,7 @@ Pieces get points by being on the edge on of the board.
 Being closer to the enemy top of the board means one additional point counted from the middle row of the board.
 """
 GAME_WON = 100
+GAME_DRAW_DQL = - 15
 OWN_PIECE = 5
 OWN_KING = 10
 OWN_PIECE_ON_EDGE = 2
@@ -341,14 +342,14 @@ class MindDeepQLearning:
     Deep q learning model
     """
     
-    def __init__(self, input_length, max_output_len, target_update_interval, model_path=None, alpha=0.01,
-                 gamma=0.7, eps_min=0.01, eps_max=1.0, eps_dec=0.9995):
+    def __init__(self, input_length, max_output_len, target_update_interval, model_path=None, alpha=0.2,
+                 gamma=0.5, eps_min=0.01, eps_max=1.0, eps_dec=0.9995):
         """"
         Initialise AI with a model, an alpha (learning rate),
         gamma (discount factor) and epsilon rate.
         Epsilon and alpha both have a max point, a decay rate, and a min point.
         
-        The deep q-learning chooses the best action basing on a given state.
+        The deep q-learning chooses the best action's index basing on a given state.
             - state is a tuple composed of values e.g. (0, 1, 1, 1 ...) details => Checkers.board_to_tuple()
             - action is a tuple composed of a piece, a move, and a boolean for
             jumping over an enemy piece, e.g. action=(0_dark, (4, 3), False)
@@ -361,35 +362,37 @@ class MindDeepQLearning:
         self.epsilon = self.eps_max
         self.max_output_len = int(max_output_len)
         self.target_update_interval = target_update_interval
-        self.target_update_counter = 0
+        # self.target_update_counter = 0
         self.train_counter = 0
         # Initialise replay memory
-        self.replay_memory = deque(maxlen=10000)
+        self.replay_memory = deque(maxlen=6000)
         
         # If the model does not exist yet create a new one
         if model_path is None:
             self.q_network = self.build_q_network(input_length, max_output_len)
-            self.target_q_network = self.build_q_network(input_length, max_output_len)
+            # self.target_q_network = self.build_q_network(input_length, max_output_len)
         else:
             self.epsilon = -1
             self.q_network = tf.keras.models.load_model(model_path)
-            self.target_q_network = tf.keras.models.clone_model(self.q_network)
-            self.target_q_network.set_weights(self.q_network.get_weights())
+            # self.target_q_network = tf.keras.models.clone_model(self.q_network)
+            # self.target_q_network.set_weights(self.q_network.get_weights())
     
     def build_q_network(self, input_length, max_output_len):
         model = tf.keras.models.Sequential([
             tf.keras.layers.Input(shape=(input_length,)),
-            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dense(256, activation='relu'),
             tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dense(128, activation='relu'),
             tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Dense(max_output_len, activation='linear')
         ])
         model.compile(loss='mean_squared_error', optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=self.alpha))
         return model
     
-    def update_target_network(self):
-        self.target_q_network.set_weights(self.q_network.get_weights())
+    # def update_target_network(self):
+    #     self.target_q_network.set_weights(self.q_network.get_weights())
     
     def choose_action(self, state, valid_actions):
         """
@@ -408,8 +411,7 @@ class MindDeepQLearning:
     def remember(self, state, turn_color, action, reward, next_state, done):
         state_with_color = np.append(state, turn_color)
         next_state_with_color = np.append(next_state, turn_color)
-        self.replay_memory.append((state_with_color, action, reward, next_state_with_color, done))
-
+        self.replay_memory.append([state_with_color, action, reward, next_state_with_color, done])
         
     def train(self, batch_size):
         if len(self.replay_memory) != self.replay_memory.maxlen:
@@ -425,17 +427,11 @@ class MindDeepQLearning:
         batch = dark_batch + light_batch
         random.shuffle(batch)
         
-        # Sample a batch from the replay memory
-        # dark_replay_memory = [i for i in self.replay_memory if self.replay_memory[0][-1] == 1]
-        # light_replay_memory = [i for i in self.replay_memory if self.replay_memory[0][-1] == 0]
-        # batch = random.sample(dark_replay_memory, batch_size / 2).append(random.sample(light_replay_memory, batch_size / 2))
-        # batch = random.sample(self.replay_memory, batch_size)
         states, targets = [], []
-        
         for state, action, reward, next_state, done in batch:
             target = reward
-            if not done:
-                target = reward + self.gamma * np.amax(self.target_q_network.predict(next_state.reshape(1, -1))[0])
+            # if not done:
+            #     target = reward + self.gamma * np.amax(self.target_q_network.predict(next_state.reshape(1, -1))[0])
                 
             target_q = self.q_network.predict(state.reshape(1, -1))
             target_q[0][action] = target
@@ -448,18 +444,18 @@ class MindDeepQLearning:
             
         self.q_network.fit(states, targets, epochs=1, verbose=0)
             
-        # Update the target network periodically
-        self.target_update_counter += 1
-        if self.target_update_counter % self.target_update_interval == 0:
-            self.update_target_network()
-            self.target_update_counter = 0
+        # # Update the target network periodically
+        # self.target_update_counter += 1
+        # if self.target_update_counter % self.target_update_interval == 0:
+        #     self.update_target_network()
+        #     self.target_update_counter = 0
             
         if self.epsilon > self.eps_min:
             self.epsilon *= self.eps_dec
             
-        # Clear replay_memory after reaching some threshold
+        # Clear replay_memory after reaching certain threshold
         self.train_counter += 1
-        if self.train_counter >= 313:
+        if self.train_counter >= 400:
             self.train_counter = 0
             self.replay_memory.clear()
                 
@@ -474,15 +470,33 @@ class MindDeepQLearning:
             state_value = MindMinimax.utility(game.board)
             turn_color = game.pieces_turn
             actions_list = [(piece, action, jump)
-                              for piece in sorted(game_state[2].keys())
-                              for action, jump in sorted(game_state[2][piece])]
-            action_number = self.choose_action(np.append(state, turn_color), actions_list)
+                            for piece in sorted(game_state[2].keys())
+                            for action, jump in sorted(game_state[2][piece])]
+            
+            # Adding a chance to minimax occurence, should add some diversity in training
+            if np.random.choice(a=[True, False], p=[0.35, 0.65]):
+                (m_piece, m_action, m_jump), _ = MindMinimax.minimax(game=game, game_state=game_state, max_depth=3,
+                                                            alpha=float('-inf'), beta=float('inf'))
+                # Get the original piece to prevent problems
+                original_pieces = game.pieces_dark if game.pieces_turn else game.pieces_light
+                for i in original_pieces:
+                    if m_piece.id == i.id:
+                        m_piece = i
+                action = (m_piece, m_action, m_jump)
+                action_number = actions_list.index(action)
+            else:
+                # Deep q learning move
+                action_number = self.choose_action(np.append(state, turn_color), actions_list)
+                action = actions_list[action_number]
             
             # Perform the chosen action in the environment and observe the next state and reward
-            action = actions_list[action_number]
             game.make_move(move=action[1], jump=action[2], piece=action[0])
             next_state = game.board_to_tuple()
-            reward = reward = abs(MindMinimax.utility(game.board)) - abs(state_value)
+            # Count the reward basing on pieces color
+            if turn_color:
+                reward = MindMinimax.utility(game.board) - state_value
+            else:
+                reward = - (MindMinimax.utility(game.board) - state_value)
             
             # Save board and prepare game for the next player
             game.board_history.append((game.board_to_tuple(), game.pieces_turn, game.pieces_counter))
@@ -493,8 +507,15 @@ class MindDeepQLearning:
             
             # Update reward if the game has ended
             if not game_state[0]:
-                reward += GAME_WON + reward
-                
+                if game_state[1] == 0:
+                    reward = GAME_DRAW_DQL
+                else:
+                    reward += GAME_WON
+                    
+            if len(self.replay_memory) >= 1:
+                # Subtract the last player's reward by score achieved thanks to the last player's move
+                self.replay_memory[-1][2] -= reward
+            
             # Remember the experience
             self.remember(state, turn_color, action_number, reward, next_state, done=not game_state[0])
 

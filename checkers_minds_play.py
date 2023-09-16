@@ -4,9 +4,9 @@ import os
 import time
 
 
-Q_LEARNING_TRAINING_GAMES = 1000
 MINIMAX_MAX_DEPTH = 4
-DEEP_Q_NUM_EPISODES = 1000
+Q_LEARNING_TRAINING_GAMES = 1000
+DEEP_Q_LEARNING_TIME_LIMIT = 2
 TRAIN_MORE_DEEP_Q = False
 
 
@@ -134,14 +134,13 @@ def main():
                 ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
                                                        max_output_len=Checkers().pieces_counter,
                                                        target_update_interval=23)
-                # for n in range(DEEP_Q_NUM_EPISODES):
                 while True:
                     print(f'Deep_q_learning model playing training game {deep_counter + 1}')
                     game = Checkers()
                     ai_deep_q_learning.play(game=game)
                     elapsed_time = time.time() - time_start
                     deep_counter += 1
-                    if elapsed_time >= 1800 * 3:
+                    if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                         break
                 ai_deep_q_learning.epsilon = -1
                 ai_deep_q_learning.model_save('deep_q_model')
@@ -154,14 +153,14 @@ def main():
                 if TRAIN_MORE_DEEP_Q:
                     time_start = time.time()
                     deep_counter = 0
-                    ai_deep_q_learning.epsilon = 0.4
+                    ai_deep_q_learning.epsilon = 0.6
                     while True:
                         print(f'Deep_q_learning model playing training game {deep_counter + 1}')
                         game = Checkers()
                         ai_deep_q_learning.play(game=game)
                         elapsed_time = time.time() - time_start
                         deep_counter += 1
-                        if elapsed_time >= 1800 * 2:
+                        if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                             break
                     ai_deep_q_learning.epsilon = -1
                     ai_deep_q_learning.model_save('deep_q_model')

@@ -523,11 +523,17 @@ class Checkers:
                         (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
                         
                     case 'deep_q_learning':
+                        start_time_dql = time()
                         actions_list = [(piece, action, jump)
                                         for piece in sorted(game_state[2].keys())
                                         for action, jump in sorted(game_state[2][piece])]
                         action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                         (piece, action, jump) = actions_list[action_number]
+                        end_time_dql = time()
+                        time_spent_dql = end_time_dql - start_time_dql
+                        
+                        if time_spent_dql < 2.0:
+                            sleep(2.0 - time_spent_dql)
                         
                     case _:
                         raise Exception('The AI model has been not found, play() cannot perform the operation')
@@ -588,11 +594,17 @@ class Checkers:
                             (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
                             
                         case 'deep_q_learning':
+                            start_time_dql = time()
                             actions_list = [(piece, action, jump)
                                             for piece in sorted(game_state[2].keys())
                                             for action, jump in sorted(game_state[2][piece])]
                             action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                             (piece, action, jump) = actions_list[action_number]
+                            end_time_dql = time()
+                            time_spent_dql = end_time_dql - start_time_dql
+                            
+                            if time_spent_dql < 2.0:
+                                sleep(2.0 - time_spent_dql)
                         
                         case _:
                             raise Exception('The AI model has been not found, play() cannot perform the operation')
@@ -709,24 +721,37 @@ class Checkers:
         ai_kind = self.ai_players[1][0] if self.pieces_turn else self.ai_players[1][1]
         
         match ai_kind:
+            
             case 'random':
                 random_piece = random.choice(list(game_state[2].keys()))
                 random_move_value = random.choice(list(i for i in game_state[2][random_piece]))
                 action, jump, piece = random_move_value[0], random_move_value[1], random_piece
+                
             case 'minimax':
                 (piece, action, jump), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=models['minimax'],
-                                                                                    alpha=float('-inf'), beta=float('inf'))
+                                                            alpha=float('-inf'), beta=float('inf'))
+                # Get the original piece to prevent problems
+                original_pieces = self.pieces_dark if self.pieces_turn else self.pieces_light
+                for i in original_pieces:
+                    if piece.id == i.id:
+                        piece = i
+                        
             case 'q_learning':
                 (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
+                
             case 'deep_q_learning':
                 actions_list = [(piece, action, jump)
                                 for piece in sorted(game_state[2].keys())
                                 for action, jump in sorted(game_state[2][piece])]
                 action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                 (piece, action, jump) = actions_list[action_number]
+                
             case _:
                 raise Exception('The AI model has been not found, single_move() cannot perform the operation')
-            
+        
+        # Make a move
+        self.make_move(action, jump, piece)
+        
         # Save the board
         self.board_history.append((self.board_to_tuple(), self.pieces_turn, self.pieces_counter))
         
@@ -779,6 +804,7 @@ class Checkers:
                         for i in original_pieces:
                             if piece.id == i.id:
                                 piece = i
+                                
                     # Q-learning algorithm
                     case 'q_learning':
                         (piece, action, jump) = models['q_learning'].choose_action(state=self.board_to_tuple(), actions_pos=game_state[2])
