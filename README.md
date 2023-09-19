@@ -3,7 +3,7 @@ Checkers Minds is a game of checkers that can be played by humans or AIs.
 
 ## Features
 * Supports both human and AI players
-* Four AI models: random, minimax, q-learning, deep q-Learning
+* Four AI models: random, minimax, q-learning, deep q-learning
 * Can be played in training mode, where the AIs play against each other without showing every move (only the final score after playing the selected number of games)
 * Should support a variety of board sizes (default is 10x10)
 
