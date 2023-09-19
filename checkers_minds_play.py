@@ -1,5 +1,5 @@
-from checkers import Checkers
-from minds import MindQLearning, MindDeepQLearning
+from game.checkers import Checkers
+from game.minds import MindQLearning, MindDeepQLearning
 import os
 import time
 
