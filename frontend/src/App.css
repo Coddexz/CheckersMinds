@@ -1,0 +1,16 @@
+body {
+  background-color: #121212;
+  color: white;
+}
+
+#game-container {
+  color: black;
+  background-color: #FFFDFA;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background-color: #FFFDFA;
+  width: 50vh;
+  height: 50vh;
+  transform: translate(-50%, -50%);
+}
