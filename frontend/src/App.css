@@ -1,16 +1,48 @@
 body {
   background-color: #121212;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: large;
   color: white;
-}
 
-#game-container {
+}
+#header {
+  font-size: 40px;
+  text-align: center;
+}
+/* #game-container {
   color: black;
   background-color: #FFFDFA;
   position: absolute;
   top: 50%;
   left: 50%;
-  background-color: #FFFDFA;
   width: 50vh;
   height: 50vh;
   transform: translate(-50%, -50%);
+} */
+
+#game-container {
+  text-align: center;
+}
+
+#rules {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#rules-button{
+  margin: auto;
+  text-align: center;
+  border: 3px solid #121212;
+  background-color: lightblue;
+  font-size: 16px;
+}
+
+#game-start-button{
+  margin: auto;
+  text-align: center;
+  border: 6px solid #121212;
+  background-color: lightcoral;
+  font-size: 32px;
+  width: 200px;
 }
