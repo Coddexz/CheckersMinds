@@ -32,7 +32,7 @@ const AIForm = (props) => {
             </label>
             &nbsp; &nbsp; &nbsp;
             <label>
-                <input type="radio" value="deep q-learning" name={props.name} onClick={handleRadioChange} />
+                <input type="radio" value="deep_q_learning" name={props.name} onClick={handleRadioChange} />
                 deep q-learning
             </label>
         </div>

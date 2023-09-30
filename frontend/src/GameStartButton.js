@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react"
 const GameStartButton = (props) => {
 
     const [buttonDisabled, setButtonDisabled] = useState(true)
-    const [checkersGame, setCheckersGame] = useState('SPACEMAN')
 
     const convertPlayers = (playersToConvert) => {
         switch (playersToConvert) {
@@ -62,14 +61,17 @@ const GameStartButton = (props) => {
 
     const handleClick = () => {
         // Make a fetch request to the `/game/init` endpoint.
-        const data = JSON.stringify({...props.gameInitData, players: convertPlayers(props.gameInitData.players)})
+        // const data = JSON.stringify({...props.gameInitData, players: convertPlayers(props.gameInitData.players)})
 
         fetch("http://127.0.0.1:5000/game/init", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: data
+            body: JSON.stringify({
+                ...props.gameInitData,
+                players: convertPlayers(props.gameInitData.players)
+            })
         })
         .then((res) => {
             if (!res.ok) {
@@ -79,9 +81,7 @@ const GameStartButton = (props) => {
         })
         .then((checkersGame) => {
             // Set the checkersGame state with the JSON response.
-            setCheckersGame(checkersGame);
-            // Alert the updated checkersGame.
-            alert(JSON.stringify(checkersGame));
+            props.setGame(checkersGame);
         })
         .catch((err) => {
             // Handle errors and show a user-friendly message.
@@ -98,9 +98,6 @@ const GameStartButton = (props) => {
             <button onClick={handleClick} disabled={buttonDisabled} id="game-start-button">
                 Start
             </button>
-            <div>
-                {checkersGame}
-            </div>
         </div>
     )
 }

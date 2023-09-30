@@ -46,3 +46,20 @@ body {
   font-size: 32px;
   width: 200px;
 }
+
+.empty-square {
+  background-color: #fff8dc;
+}
+
+.func-square {
+  background-color: #8b6914;
+}
+
+.highlighted-square {
+  background-color: darkblue;
+}
+
+td {
+  width: 60px;
+  height: 60px;
+}

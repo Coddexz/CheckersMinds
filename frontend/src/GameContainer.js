@@ -43,6 +43,7 @@ const GameContainer = (props) => {
             <div>
                 <GameStartButton
                 gameInitData={gameInitData}
+                setGame={props.setGame}
                 />
             </div>
         </div>
