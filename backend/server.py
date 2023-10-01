@@ -97,10 +97,49 @@ def game_init():
 
 @app.route('/game/move', methods=['POST'])
 def move():
+    # Create a valid checkers game object from received data
+    data = request.json
+    
     # Makes a move on the board
     pass
     data = request.json
     
+    
+    print(data)
+    print(data['ai_players'])
+    
+"""
+{'ai_players': [[True, False], ['random', None]],
+'board': [None, 0, None, 1, None, 2, None, 3,
+    None, 4, 5, None, 6, None, 7, None, 8, None, 9, None, None, 10, None, 11, None, 12, None, 13, None,
+    14, 15, None, 16, None, 17, None, None, None, 19, None, None, None, None, None, None, None, None, 
+    18, None, None, None, None, None, None, None, None, None, None, None, None, None, 20, None, 21, 
+    None, 22, None, 23, None, 24, 25, None, 26, None, 27, None, 28, None, 29, None, None, 30, None, 31,
+    None, 32, None, 33, None, 34, 35, None, 36, None, 37, None, 38, None, 39, None],
+'board_history': [[[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1,
+    0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, -1, 0, -1, 0, -1, 0,
+    -1, 0, -1, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0], True, 40]],
+'height': 10,
+'pieces_counter': 40,
+'pieces_dark': [[16, True, [3, 2], False], [1, True, [0, 3], False], [6, True, [1, 2], False], 
+    [7, True, [1, 4], False], [18, True, [4, 7], False], [8, True, [1, 6], False], [9, True, [1, 8],
+    False], [13, True, [2, 7], False], [0, True, [0, 1], False], [14, True, [2, 9], False], [10, True, 
+    [2, 1], False], [11, True, [2, 3], False], [4, True, [0, 9], False], [19, True, [3, 8], False], 
+    [17, True, [3, 4], False], [2, True, [0, 5], False], [12, True, [2, 5], False], [3, True, [0, 7], 
+    False], [15, True, [3, 0], False], [5, True, [1, 0], False]],
+'pieces_light': [[26, False, [7, 2], False], [27, False, [7, 4], False], [24, False, [6, 9], False],
+    [28, False, [7, 6], False], [29, False, [7, 8], False], [30, False, [8, 1], False], [31, False, 
+    [8, 3], False], [32, False, [8, 5], False], [33, False, [8, 7], False], [34, False, [8, 9], False],
+    [35, False, [9, 0], False], [37, False, [9, 4], False], [36, False, [9, 2], False], [25, False, 
+    [7, 0], False], [39, False, [9, 8], False], [38, False, [9, 6], False], [22, False, [6, 5], False],
+    [20, False, [6, 1], False], [21, False, [6, 3], False], [23, False, [5, 8], False]], 
+'pieces_turn': False, 
+'width': 10}
+[[True, False], ['random', None]]
+"""
+    for item in data:
+        pass
 
 if __name__ == '__main__':
     app.run(debug=True)
