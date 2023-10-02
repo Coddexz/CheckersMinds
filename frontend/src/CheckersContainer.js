@@ -161,10 +161,10 @@ const CheckersContainer = (props) => {
     // If this piece can make any other moves -> highlight position and allow for making only them
     if (jump) {
       seePossibleMoves(pieceToMove, true)
-    } else {
-      sendGame(props.game)
-      return
     }
+
+    sendGame(props.game)
+    return
   }
   const sendGame = (gameToSend) => {
       // Make a fetch request to the `/game/move` endpoint.
@@ -181,19 +181,21 @@ const CheckersContainer = (props) => {
       })
       .then((res) => {
           if (!res.ok) {
-              throw new Error('Network response was not ok');
+              throw new Error('Network response was not ok')
           }
           return res.json();
       })
       .then((checkersGame) => {
           // Set the checkersGame state with the JSON response.
-          props.setGame(checkersGame);
+          props.setGame(checkersGame)
       })
       .catch((err) => {
           // Handle errors and show a user-friendly message.
           console.error('Error:', err);
-          alert('An error occurred while fetching the game data.');
-      });
+          alert('An error occurred while fetching the game data.')
+      })
+      setFirstMove(true)
+      setSquaresToHighlight([])
   }
 
   const generateTable = () => {

@@ -1,7 +1,8 @@
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import os
-from game.checkers import Checkers
+import numpy as np
+from game.checkers import Checkers, Piece
 from game.minds import MindDeepQLearning
 
 
@@ -55,20 +56,22 @@ def validate_input(players, game=None):
         return 0
     
     some_counter = -1
-    for ind, square in enumerate(game.board):
-        if ind % 10 == 0:
-            some_counter *= (-1)
+    for ind, row in enumerate(game.board):
+        for ind_r, square in enumerate(row):
             
-        if some_counter == 1:
             if ind % 2 == 0:
-                if square != 'None':
-                    return Response('Board discrepancy, a piece stands on a wrong square',
-                                    status=400)
-        else:
-            if ind % 2 != 0:
-                if square != 'None':
-                    return Response('Board discrepancy, a piece stands on a wrong square',
-                                    status=400)
+                some_counter *= (-1)
+                
+            if some_counter == 1:
+                if ind_r % 2 != 0:
+                    if square is not None:
+                        return Response('Board discrepancy, a piece stands on a wrong square',
+                                        status=400)
+            else:
+                if ind_r % 2 == 0:
+                    if square is not None:
+                        return Response('Board discrepancy, a piece stands on a wrong square',
+                                        status=400)
     return 0
 
 
@@ -88,8 +91,8 @@ def game_init():
     
     # Make the first move if AI starts
     if game.ai_players[0][0] == True:
-        result = make_single_move(game)
-        if result == 1:
+        game_in_progress = make_single_move(game)
+        if game_in_progress != True:
             return Response('Something went wrong, a game should not have been finished after the 1st move',
                             status=400)
         
@@ -99,14 +102,72 @@ def game_init():
 def move():
     # Create a valid checkers game object from received data
     data = request.json
+    data_processed = {}
     
-    # Makes a move on the board
-    pass
-    data = request.json
+    # Prepate the data to initialise the game
+    for k, v in data.items():
+        match k:
+            case 'ai_players':
+                data_processed[k] = tuple(map(tuple, v))
+            
+            case 'board':
+                data_processed[k] = np.empty(shape=(data['height'], data['width']), dtype=object)
+            
+            case 'board_history':
+                data_processed[k] = list(map(tuple, v[0]), v[1], v[2])
+                print(data_processed[k])
+            
+            case 'height':
+                data_processed[k] = v
+            
+            case 'pieces_counter':
+                data_processed[k] = v
+            
+            case 'pieces_dark' | 'pieces_light':
+                data_processed[k] = {Piece(piece[0], piece[1], tuple(piece[2]), piece[3])
+                                     for piece in v}
+            
+            case 'pieces_turn':
+                data_processed[k] = v
+            
+            case 'width':
+                data_processed[k] = v
+            
+            case _:
+                return Response('Sent data is not correct', status=400)
+            
+    for piece in (data_processed['pieces_dark'].union(data_processed['pieces_light'])):
+        data_processed['board'][piece.position[0]][piece.position[1]] = piece
+        
+    # Initialise the object and final validation
+    game = Checkers(data_processed['height'], data_processed['width'], data_processed['board'],
+                    data_processed['pieces_dark'], data_processed['pieces_light'],
+                    data_processed['ai_players'], data_processed['pieces_turn'],
+                    data_processed['board_history'])
+    validate_input(players=data_processed['ai_players'], game=game)
     
+    # Save the board
+    game.board_history.append((game.board_to_tuple(), game.pieces_turn, game.pieces_counter))
     
-    print(data)
-    print(data['ai_players'])
+    # Prepare the game for the next player
+    game.pieces_turn = False if game.pieces_turn else True
+    
+    # Make move if it's AI turn, else check winning conditions
+    if game.ai_players[0][not game.pieces_turn]:
+        game_in_progress = make_single_move(game=game)
+    else:
+        game_state = game.game_over_conditions()
+        game_in_progress = True if game_state[0] else game_state[:2]
+    
+    # If game is finished
+    if game_in_progress != True:
+        return jsonify(game_in_progress)
+    else:
+        return jsonify(game.to_dict())
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
     
 """
 {'ai_players': [[True, False], ['random', None]],
@@ -138,8 +199,3 @@ def move():
 'width': 10}
 [[True, False], ['random', None]]
 """
-    for item in data:
-        pass
-
-if __name__ == '__main__':
-    app.run(debug=True)
