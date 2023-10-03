@@ -74,6 +74,11 @@ def validate_input(players, game=None):
                                         status=400)
     return 0
 
+def convert_game_state(game_state):
+    """
+    Convert game state to json compatible data.
+    """
+    return (game_state[0], game_state[1], {k.id: tuple(v) for k, v in game_state[2].items()})
 
 @app.route('/game/init', methods=['POST'])
 def game_init():
@@ -91,12 +96,14 @@ def game_init():
     
     # Make the first move if AI starts
     if game.ai_players[0][0] == True:
-        game_in_progress = make_single_move(game)
-        if game_in_progress != True:
+        game_state = make_single_move(game)
+        if not game_state[0]:
             return Response('Something went wrong, a game should not have been finished after the 1st move',
                             status=400)
+    else:
+        game_state = game.game_over_conditions()
         
-    return jsonify(game.to_dict())
+    return jsonify(**game.to_dict(), **{'game_state': convert_game_state(game_state)})
 
 @app.route('/game/move', methods=['POST'])
 def move():
@@ -114,8 +121,7 @@ def move():
                 data_processed[k] = np.empty(shape=(data['height'], data['width']), dtype=object)
             
             case 'board_history':
-                data_processed[k] = list(map(tuple, v[0]), v[1], v[2])
-                print(data_processed[k])
+                data_processed[k] = list(tuple([tuple(item[0]), item[1], item[2]]) for item in v)
             
             case 'height':
                 data_processed[k] = v
@@ -154,16 +160,17 @@ def move():
     
     # Make move if it's AI turn, else check winning conditions
     if game.ai_players[0][not game.pieces_turn]:
-        game_in_progress = make_single_move(game=game)
+        game_state = make_single_move(game=game)
     else:
         game_state = game.game_over_conditions()
-        game_in_progress = True if game_state[0] else game_state[:2]
+        
+    return jsonify(**game.to_dict(), **{'game_state': convert_game_state(game_state)})
     
     # If game is finished
-    if game_in_progress != True:
-        return jsonify(game_in_progress)
-    else:
-        return jsonify(game.to_dict())
+    # if not game_state[0]:
+    #     return jsonify(game_state[:2])
+    # else:
+    #     return jsonify(game.to_dict())
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -198,4 +205,9 @@ if __name__ == '__main__':
 'pieces_turn': False, 
 'width': 10}
 [[True, False], ['random', None]]
+
+game_state = (True, 0,
+{16_dark: {((4, 1), False), ((4, 3), False)}, 17_dark: {((4, 5), False), ((4, 3), False)},
+15_dark: {((4, 1), False)}, 18_dark: {((4, 5), False), ((4, 7), False)}, 19_dark: {((4, 9), False),
+((4, 7), False)}})
 """

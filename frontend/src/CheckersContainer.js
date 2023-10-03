@@ -1,69 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 const CheckersContainer = (props) => {
 
-  const seePossibleMoves = (event, recurrent) => {
-    if (recurrent === undefined) recurrent = false
-    let value
-    
-    if (recurrent) {
-      value = event
-    } else {
-      let eventShort = event.props.children
-      value = {
-        ID: eventShort[1],
-        Color: eventShort[3],
-        Position: eventShort[5],
-        King: eventShort[7]
-    }}
-
-    let squaresToHighlightArray = []
-
-    // Get the range of ids within the ooposite colour
-    let maxPlayerPieces = ((props.game.height - 2) / 2) * (props.game.width / 2)
-    let minPlayerPieces = 0
-    // Correct if light pieces
-    if (value.Color) {
-      minPlayerPieces = maxPlayerPieces
-      maxPlayerPieces *= 2
-    }
-
-    if (value.King) {
-      //pass
-    } else {
-    let moveRange = [-1, 1]
-    for (let moveVertical of moveRange) {
-      let VerticalNewPos = value.Position[0] + moveVertical
-      if (VerticalNewPos < 0 || VerticalNewPos > props.game.height) continue
-      for (let moveHorizontal of moveRange) {
-        let HorizontalNewPos = value.Position[1] + moveHorizontal
-        if (HorizontalNewPos < 0 || HorizontalNewPos > props.game.width) continue
-
-        let positionToCheckStr = VerticalNewPos.toString() + HorizontalNewPos
-
-        if (!recurrent && props.game.board[parseInt(positionToCheckStr)] === null) {
-          squaresToHighlightArray.push([parseInt(positionToCheckStr[0]), parseInt(positionToCheckStr[1]), value, false])
-
-        } else if (props.game.board[parseInt(positionToCheckStr)] !== null &&
-        minPlayerPieces <= props.game.board[parseInt(positionToCheckStr)] &&
-        props.game.board[parseInt(positionToCheckStr)] < maxPlayerPieces) {
-          // If the piece belongs to the opposite colour
-          let squareBehindEnemy = (parseInt(positionToCheckStr[0]) + moveVertical).toString() +
-          (parseInt(positionToCheckStr[1]) + moveHorizontal).toString()
-
-          if (props.game.board[parseInt(squareBehindEnemy)] === null) {
-            squaresToHighlightArray.push([parseInt(squareBehindEnemy[0]), parseInt(squareBehindEnemy[1]), value, true])
-          }
-
-        } else continue
-        }
-        }
-        // Highlight all fields
-        setSquaresToHighlight(squaresToHighlightArray)
-      }
-    }
-
-  const makeMove = (pieceToMove, highlightedPosition, jump) => {
+  const makeMove = (pieceToMoveId, highlightedPosition, jump) => {
     /*
     In React:
     Make a move on the board, i.e. change board, change, pieces
@@ -73,6 +12,24 @@ const CheckersContainer = (props) => {
     Save the board in board_history
     Prepare the game fo the next player => change pieces_turn and check if the game has ended
     */
+
+    let pieceToMove = undefined
+    console.log(pieceToMoveId)
+
+    for (const piece of props.game.pieces_dark) {
+      if (piece[0] === pieceToMoveId) {
+        pieceToMove = piece
+        break
+      }
+    }
+    if (!pieceToMove) {
+      for (const piece of props.game.pieces_light) {
+        if (piece[0] === pieceToMoveId) {
+          pieceToMove = piece
+          break
+        }
+      }
+    }
     console.log(pieceToMove)
     console.log(highlightedPosition)
     setFirstMove(false)
@@ -81,7 +38,7 @@ const CheckersContainer = (props) => {
 
     // Change the board object
     let boardObject = [...props.game.board]
-    boardObject[parseInt(highlightedPositionStr)] = pieceToMove.ID
+    boardObject[parseInt(highlightedPositionStr)] = pieceToMove.id
     boardObject[parseInt(pieceToMove.Position[0].toString() + pieceToMove.Position[1])] = null
 
     // Change pieces counter and array
@@ -135,7 +92,7 @@ const CheckersContainer = (props) => {
       }
       console.log('Before setting squaresToHighlight:', squaresToHighlight);
     // Empty squares
-    setSquaresToHighlight([])
+    // setSquaresToHighlight([])
       // Debugging
   console.log('After setting squaresToHighlight:', squaresToHighlight);
 
@@ -160,7 +117,7 @@ const CheckersContainer = (props) => {
     
     // If this piece can make any other moves -> highlight position and allow for making only them
     if (jump) {
-      seePossibleMoves(pieceToMove, true)
+      // seePossibleMoves(pieceToMove, true)
     }
 
     sendGame(props.game)
@@ -195,19 +152,18 @@ const CheckersContainer = (props) => {
           alert('An error occurred while fetching the game data.')
       })
       setFirstMove(true)
-      setSquaresToHighlight([])
+      // setSquaresToHighlight([0])
   }
 
   const generateTable = () => {
-    const table = [];
-
+    const board = []
     for (let i = 0; i < props.game.height; i++) {
       const row = [];
       for (let j = 0; j < props.game.width; j++) {
-        let cellClass = ''
-        let cellContent = null
+        let cellClass = undefined
+        let cellContent = undefined
         let cellImage = null
-        let cellClick = undefined
+        let cellClick = null
 
         if ((i % 2 === 0 && j % 2 === 0) || (i % 2 !== 0 && j % 2 !== 0)) {
           cellClass = 'empty-square'
@@ -216,11 +172,7 @@ const CheckersContainer = (props) => {
           cellClass = 'func-square'
           for (let piece of props.game.pieces_dark) {
             if (piece[2][0] === i && piece[2][1] === j) {
-              cellContent = (
-                <>
-                  ID : {piece[0]}, Color: {piece[1]}, Position: {piece[2]}, King: {piece[3]}
-                </>
-              );
+              cellContent = {id: piece[0], color: piece[1], position: piece[2], king: piece[3]}
               if (piece[3]) {
                 cellImage = <img src="/dark_piece_king.png" alt="Dark Piece King" />
             } else {
@@ -233,11 +185,7 @@ const CheckersContainer = (props) => {
           if (!cellContent) {
             for (let piece of props.game.pieces_light) {
               if (piece[2][0] === i && piece[2][1] === j) {
-                cellContent = (
-                  <>
-                    ID : {piece[0]}, Color: {piece[1]}, Position: {piece[2]}, King: {piece[3]}
-                  </>
-                );
+                cellContent = {id: piece[0], color: piece[1], position: piece[2], king: piece[3]}
                 if (piece[3]) {
                     cellImage = <img src="/light_piece_king.png" alt="Light Piece King" />
                 } else {
@@ -247,24 +195,22 @@ const CheckersContainer = (props) => {
               }
             }
           }
-          /* If this is a piece, it is a current human player turn, and the piece belongs to the
-          current player, cellContent.props.children[3] == Colour of the cellContent*/
+          /* If this is a piece, it is a current human player turn, the piece belongs to the
+          current player, and piece can move*/
           let pieces_turn = props.game.pieces_turn ? 0 : 1
           if (cellContent && !props.game.ai_players[0][pieces_turn] &&
-            cellContent.props.children[3] === props.game.pieces_turn) {
-            if (firstMove) cellClick = () => seePossibleMoves(cellContent)
-          } else {
-                  if (firstMove) cellClick = () => setSquaresToHighlight([])
-                }
-          // Highlight squares if array squaresToHighlight exists
-          if (squaresToHighlight) {
-            for (let squarePosition of squaresToHighlight) {
-              if (squarePosition[0] === i && squarePosition[1] === j) {
-                cellClass = 'func-square highlighted-square'
-                cellClick = () => makeMove(squarePosition[2], [squarePosition[0], squarePosition[1]], squarePosition[3])
+            cellContent.color === props.game.pieces_turn) {
+            // Additional condition => if the piece belongs to possible moves set
+            for (const key in props.game.game_state[2]) {
+              if (parseInt(key) === cellContent.id) {
+                // If firstMove => onClick always highlight a square,
+                // otherways only jumping moves of the same piece are valid
+                if (firstMove) cellClick = () => setSquaresToHighlight({[key]: props.game.game_state[2][key]})
               }
             }
           }
+          // onClick on everything that is not selected pieces means clearing the board from highlighted squares
+          if (!cellClick) cellClick = () => setSquaresToHighlight([])
         }
         row.push(
           <td key={j} className={cellClass} value={cellContent} onClick={cellClick}>
@@ -272,9 +218,21 @@ const CheckersContainer = (props) => {
           </td>
         );
       }
-      table.push(<tr key={i}>{row}</tr>)
+      board.push(<tr key={i}>{row}</tr>)
     }
-    return table
+    // Highlight squares if squaresToHighlight exists
+    if (squaresToHighlight) {
+      for (const piece in squaresToHighlight) {
+        for (const move of squaresToHighlight[piece]) {
+          const updatedCell = React.cloneElement(board[move[0][0]].props.children[move[0][1]], {
+            className: 'func-square highlighted-square',
+            onClick: () => makeMove(piece, [move[0][0], move[0][1]], move[1]),
+          })
+          board[move[0][0]].props.children[move[0][1]] = updatedCell
+        }
+      }
+    }
+    return [...board]
   }
 
   const [squaresToHighlight, setSquaresToHighlight] = useState([])
@@ -284,14 +242,11 @@ const CheckersContainer = (props) => {
   useEffect(() => {
     setTable(generateTable())
   }, [squaresToHighlight])
-  // const generateCheckers = useMemo(() => generateTable(squaresToHighlight), [squaresToHighlight])
 
   return (
     <div id="game-container">
-      <div>{JSON.stringify(props.game)}</div>
+      {/* <div>{JSON.stringify(props.game)}</div> */}
       <table>
-        {/* <tbody>{generateTable()}</tbody> */}
-        {/* <tbody>{generateCheckers}</tbody> */}
         <tbody>{table}</tbody>
       </table>
     </div>

@@ -763,7 +763,7 @@ class Checkers:
         # If the game has finished
         if not game_state[0]:
             return game_state[:2]
-        return True
+        return game_state
     
     def train(self, models):
         """
