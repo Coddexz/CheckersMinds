@@ -78,7 +78,10 @@ def convert_game_state(game_state):
     """
     Convert game state to json compatible data.
     """
-    return (game_state[0], game_state[1], {k.id: tuple(v) for k, v in game_state[2].items()})
+    if game_state[0]:
+        return (game_state[0], game_state[1], {k.id: tuple(v) for k, v in game_state[2].items()})
+    else:
+        return (game_state[0], game_state[1])
 
 @app.route('/game/init', methods=['POST'])
 def game_init():

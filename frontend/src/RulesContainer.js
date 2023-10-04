@@ -19,7 +19,7 @@ const RulesContainer = (props) => {
         </li>
         <li>If there is an option to jump over an enemy piece, you must do so.</li>
         <li>You do not have to choose always the biggest number of jumps.</li>
-        <li>If a piece reaches the opposite first row, it becomes a king.</li>
+        <li>If a piece reaches the opposite first row, it becomes a king and finishes its move.</li>
         <li>
           A king is not limited by number of squares, it can move and jump over
           as many squares as he wants as long as it is a diagonal move.

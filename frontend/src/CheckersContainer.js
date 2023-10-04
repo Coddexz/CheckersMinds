@@ -14,23 +14,24 @@ const CheckersContainer = (props) => {
     */
 
     let pieceToMove = undefined
-    console.log(pieceToMoveId)
 
     for (const piece of props.game.pieces_dark) {
       if (piece[0] === pieceToMoveId) {
-        pieceToMove = piece
+        pieceToMove = {'id': piece[0], 'color': piece[1], 'position': piece[2], 'king': piece[3]}
         break
       }
     }
     if (!pieceToMove) {
       for (const piece of props.game.pieces_light) {
         if (piece[0] === pieceToMoveId) {
-          pieceToMove = piece
+          pieceToMove = {'id': piece[0], 'color': piece[1], 'position': piece[2], 'king': piece[3]}
           break
         }
       }
     }
+    console.log('Piece to move')
     console.log(pieceToMove)
+    console.log('highlighted pos')
     console.log(highlightedPosition)
     setFirstMove(false)
     let boardToUpdate = undefined
@@ -39,13 +40,13 @@ const CheckersContainer = (props) => {
     // Change the board object
     let boardObject = [...props.game.board]
     boardObject[parseInt(highlightedPositionStr)] = pieceToMove.id
-    boardObject[parseInt(pieceToMove.Position[0].toString() + pieceToMove.Position[1])] = null
+    boardObject[parseInt(pieceToMove.position[0].toString() + pieceToMove.position[1])] = null
 
     // Change pieces counter and array
-    let piecesArr = pieceToMove.Color ? [...props.game.pieces_dark] : [...props.game.pieces_light]
+    let piecesArr = pieceToMove.color ? [...props.game.pieces_dark] : [...props.game.pieces_light]
     // To be continued, it doesn't change the value of piece in the array!!!
     for (const [i, piece] of piecesArr.entries()) {
-      if (piece[0] === pieceToMove.ID) {
+      if (piece[0] === pieceToMove.id) {
         piecesArr[i][2] = [highlightedPosition[0], highlightedPosition[1]]
       }
     }
@@ -54,73 +55,89 @@ const CheckersContainer = (props) => {
       let newPiecesCounter = props.game.pieces_counter - 1
 
       // Check the enemy position
-      const heightEqualizer = (highlightedPosition[0] - pieceToMove.Position[0]) > 0 ? 1 : -1
-      const widthEqualizer = (highlightedPosition[1] - pieceToMove.Position[1]) > 0 ? 1 : -1
+      const heightEqualizer = (highlightedPosition[0] - pieceToMove.position[0]) > 0 ? 1 : -1
+      const widthEqualizer = (highlightedPosition[1] - pieceToMove.position[1]) > 0 ? 1 : -1
 
-      let enemyPieceHeight = pieceToMove.Position[0]
-      let enemyPieceWidth = pieceToMove.Position[1]
+      let enemyPieceHeight = pieceToMove.position[0]
+      let enemyPieceWidth = pieceToMove.position[1]
+      const enemyPieceModifier = pieceToMove.color ? 2 : 1
+      const minEnemyPieceId = pieceToMove.color ? 20 : 0
+      const maxEnemyPieceId = (((props.game.height - 2) / 2) * (props.game.width / 2)) * enemyPieceModifier
+      
       
       while (true) {
-        if ((enemyPieceHeight + heightEqualizer) === highlightedPosition[0]) break
         enemyPieceHeight += heightEqualizer
         enemyPieceWidth += widthEqualizer
+        const boardObjectSquare = boardObject[parseInt(enemyPieceHeight.toString() + enemyPieceWidth)]
+        if (boardObjectSquare != null && minEnemyPieceId <= boardObjectSquare && boardObjectSquare < maxEnemyPieceId) break
       }
-
+      console.log('enemy piece position')
+      console.log(enemyPieceHeight)
+      console.log(enemyPieceWidth)
       let enemyPiecePosStr = enemyPieceHeight.toString() + enemyPieceWidth
+      console.log('enemy piece to str')
       console.log(enemyPiecePosStr)
       boardObject[parseInt(enemyPiecePosStr)] = null
 
-      let enemyPiecesArr = pieceToMove.Color ? [...props.game.pieces_light] : [...props.game.pieces_dark]
-      console.log(enemyPiecesArr, 'enemy pieces array')
+      let enemyPiecesArr = pieceToMove.color ? [...props.game.pieces_light] : [...props.game.pieces_dark]
       for (let i = 0; i < enemyPiecesArr.length; i++) {
         if (enemyPiecesArr[i][2][0] === enemyPieceHeight && enemyPiecesArr[i][2][1] === enemyPieceWidth) {
-          console.log('enemy:')
-          console.log(enemyPiecesArr[i])
+          console.log('enemy piece spotted')
           enemyPiecesArr.splice(i, 1)
         }}
       boardToUpdate = {
         'board': boardObject,
         'pieces_counter': newPiecesCounter,
-        [pieceToMove.Color ? 'pieces_dark' : 'pieces_light']: piecesArr,
-        [pieceToMove.Color ? 'pieces_light' : 'pieces_dark']: enemyPiecesArr,
+        [pieceToMove.color ? 'pieces_dark' : 'pieces_light']: piecesArr,
+        [pieceToMove.color ? 'pieces_light' : 'pieces_dark']: enemyPiecesArr,
       }
       } else {
         boardToUpdate = {
           'board': boardObject,
-          [pieceToMove.Color ? 'pieces_dark' : 'pieces_light']: piecesArr,
+          [pieceToMove.color? 'pieces_dark' : 'pieces_light']: piecesArr,
         }
       }
-      console.log('Before setting squaresToHighlight:', squaresToHighlight);
-    // Empty squares
-    // setSquaresToHighlight([])
-      // Debugging
-  console.log('After setting squaresToHighlight:', squaresToHighlight);
 
     // If the piece crossed reached the end of the board => make it a king
-    if ((pieceToMove.Color && highlightedPosition[0] == (props.game.height - 1)) ||
-    (!pieceToMove.Color && highlightedPosition[0] == 0)) {
+    if ((pieceToMove.color && highlightedPosition[0] === (props.game.height - 1)) ||
+    (!pieceToMove.color && highlightedPosition[0] === 0)) {
       for (const [i, piece] of piecesArr.entries()) {
-        if (piece[0] === pieceToMove.ID) {
+        if (piece[0] === pieceToMove.id) {
           piecesArr[i][3] = true
         }
       }
-      boardToUpdate = {...boardToUpdate, [pieceToMove.Color ? 'pieces_dark' : 'pieces_light']: piecesArr,}
+      boardToUpdate = {...boardToUpdate, [pieceToMove.color ? 'pieces_dark' : 'pieces_light']: piecesArr,}
     }
     // Save the game state
+    const {game_state, ...gameWithoutGameState} = props.game
+    const updatedGameWithoutGameState = {...gameWithoutGameState, ...boardToUpdate}
     props.setGame({...props.game, ...boardToUpdate})
 
-    for (const piece of piecesArr) {
-      if (piece[0] === pieceToMove.ID) {
-        pieceToMove = {'ID': piece[0], 'Color': piece[1], 'Position': piece[2], 'King': piece[3]}
-      }
-    }
-    
     // If this piece can make any other moves -> highlight position and allow for making only them
     if (jump) {
-      // seePossibleMoves(pieceToMove, true)
+      for (const piece in squaresToHighlight) {
+        if (parseInt(piece) === pieceToMove.id) {
+          let possibleNextMoves = []
+          for (const move of squaresToHighlight[piece]) {
+            // console.log(move)
+            // console.log(highlightedPosition)
+            if (move[0][0][0] === highlightedPosition[0] && move[0][0][1] === highlightedPosition[1]) {
+              const moveToBeAdded = [move[0].slice(1), move[1]]
+              // console.log('Move to be added:')
+              // console.log(moveToBeAdded)
+              if (moveToBeAdded[0].length !== 0) possibleNextMoves.push(moveToBeAdded)
+            }
+          }
+          console.log(possibleNextMoves)
+          if (possibleNextMoves.length !== 0) {
+            setSquaresToHighlight({[piece]: possibleNextMoves})
+            return
+          }
+        }
+      }
     }
-
-    sendGame(props.game)
+    sendGame(updatedGameWithoutGameState)
+    setSquaresToHighlight(null)
     return
   }
   const sendGame = (gameToSend) => {
@@ -152,7 +169,7 @@ const CheckersContainer = (props) => {
           alert('An error occurred while fetching the game data.')
       })
       setFirstMove(true)
-      // setSquaresToHighlight([0])
+      // setSquaresToHighlight([])
   }
 
   const generateTable = () => {
@@ -205,12 +222,14 @@ const CheckersContainer = (props) => {
               if (parseInt(key) === cellContent.id) {
                 // If firstMove => onClick always highlight a square,
                 // otherways only jumping moves of the same piece are valid
-                if (firstMove) cellClick = () => setSquaresToHighlight({[key]: props.game.game_state[2][key]})
+                if (firstMove) {
+                  cellClick = () => setSquaresToHighlight({[key]: props.game.game_state[2][key]})
+                }
               }
             }
           }
           // onClick on everything that is not selected pieces means clearing the board from highlighted squares
-          if (!cellClick) cellClick = () => setSquaresToHighlight([])
+          if (!cellClick && firstMove) cellClick = () => setSquaresToHighlight([])
         }
         row.push(
           <td key={j} className={cellClass} value={cellContent} onClick={cellClick}>
@@ -224,11 +243,18 @@ const CheckersContainer = (props) => {
     if (squaresToHighlight) {
       for (const piece in squaresToHighlight) {
         for (const move of squaresToHighlight[piece]) {
-          const updatedCell = React.cloneElement(board[move[0][0]].props.children[move[0][1]], {
-            className: 'func-square highlighted-square',
-            onClick: () => makeMove(piece, [move[0][0], move[0][1]], move[1]),
-          })
-          board[move[0][0]].props.children[move[0][1]] = updatedCell
+          if (move[1]) {
+            // If jump
+            const updatedCell = React.cloneElement(board[move[0][0][0]].props.children[move[0][0][1]],
+              {className: 'func-square highlighted-square',
+              onClick: () => makeMove(parseInt(piece), [move[0][0][0], move[0][0][1]], move[1]),})
+            board[move[0][0][0]].props.children[move[0][0][1]] = updatedCell
+          } else {
+            const updatedCell = React.cloneElement(board[move[0][0]].props.children[move[0][1]],
+              {className: 'func-square highlighted-square',
+              onClick: () => makeMove(parseInt(piece), [move[0][0], move[0][1]], move[1]),})
+              board[move[0][0]].props.children[move[0][1]] = updatedCell
+            }
         }
       }
     }
@@ -241,7 +267,7 @@ const CheckersContainer = (props) => {
 
   useEffect(() => {
     setTable(generateTable())
-  }, [squaresToHighlight])
+  }, [squaresToHighlight, props.game])
 
   return (
     <div id="game-container">
