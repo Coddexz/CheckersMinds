@@ -8,6 +8,7 @@ MINIMAX_MAX_DEPTH = 4
 Q_LEARNING_TRAINING_GAMES = 1000
 DEEP_Q_LEARNING_TIME_LIMIT = 2
 TRAIN_MORE_DEEP_Q = False
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'backend', 'game', 'deep_q_model')
 
 
 def main():
@@ -129,7 +130,7 @@ def main():
         if ai_model_first =='deep_q_learning' or ai_model_second == 'deep_q_learning':
             deep_counter = 0
             # If there is no model present
-            if not os.path.isdir('deep_q_model'):
+            if not os.path.exists(DEEP_Q_LEARNING_MODEL_DIR):
                 time_start = time.time()
                 ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
                                                        max_output_len=Checkers().pieces_counter,
@@ -149,7 +150,7 @@ def main():
                 ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
                                                        max_output_len=Checkers().pieces_counter,
                                                        target_update_interval=23,
-                                                       model_path=os.path.join(os.getcwd(), 'deep_q_model'))
+                                                       model_path=DEEP_Q_LEARNING_MODEL_DIR)
                 if TRAIN_MORE_DEEP_Q:
                     time_start = time.time()
                     deep_counter = 0

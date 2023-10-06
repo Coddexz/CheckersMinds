@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"
 
 const CheckersContainer = (props) => {
 
@@ -29,10 +29,6 @@ const CheckersContainer = (props) => {
         }
       }
     }
-    console.log('Piece to move')
-    console.log(pieceToMove)
-    console.log('highlighted pos')
-    console.log(highlightedPosition)
     setFirstMove(false)
     let boardToUpdate = undefined
     let highlightedPositionStr = highlightedPosition[0].toString() + highlightedPosition[1]
@@ -44,7 +40,6 @@ const CheckersContainer = (props) => {
 
     // Change pieces counter and array
     let piecesArr = pieceToMove.color ? [...props.game.pieces_dark] : [...props.game.pieces_light]
-    // To be continued, it doesn't change the value of piece in the array!!!
     for (const [i, piece] of piecesArr.entries()) {
       if (piece[0] === pieceToMove.id) {
         piecesArr[i][2] = [highlightedPosition[0], highlightedPosition[1]]
@@ -71,18 +66,12 @@ const CheckersContainer = (props) => {
         const boardObjectSquare = boardObject[parseInt(enemyPieceHeight.toString() + enemyPieceWidth)]
         if (boardObjectSquare != null && minEnemyPieceId <= boardObjectSquare && boardObjectSquare < maxEnemyPieceId) break
       }
-      console.log('enemy piece position')
-      console.log(enemyPieceHeight)
-      console.log(enemyPieceWidth)
       let enemyPiecePosStr = enemyPieceHeight.toString() + enemyPieceWidth
-      console.log('enemy piece to str')
-      console.log(enemyPiecePosStr)
       boardObject[parseInt(enemyPiecePosStr)] = null
 
       let enemyPiecesArr = pieceToMove.color ? [...props.game.pieces_light] : [...props.game.pieces_dark]
       for (let i = 0; i < enemyPiecesArr.length; i++) {
         if (enemyPiecesArr[i][2][0] === enemyPieceHeight && enemyPiecesArr[i][2][1] === enemyPieceWidth) {
-          console.log('enemy piece spotted')
           enemyPiecesArr.splice(i, 1)
         }}
       boardToUpdate = {
@@ -119,16 +108,11 @@ const CheckersContainer = (props) => {
         if (parseInt(piece) === pieceToMove.id) {
           let possibleNextMoves = []
           for (const move of squaresToHighlight[piece]) {
-            // console.log(move)
-            // console.log(highlightedPosition)
             if (move[0][0][0] === highlightedPosition[0] && move[0][0][1] === highlightedPosition[1]) {
               const moveToBeAdded = [move[0].slice(1), move[1]]
-              // console.log('Move to be added:')
-              // console.log(moveToBeAdded)
               if (moveToBeAdded[0].length !== 0) possibleNextMoves.push(moveToBeAdded)
             }
           }
-          console.log(possibleNextMoves)
           if (possibleNextMoves.length !== 0) {
             setSquaresToHighlight({[piece]: possibleNextMoves})
             return
@@ -136,14 +120,13 @@ const CheckersContainer = (props) => {
         }
       }
     }
+    props.setGameLoading(true)
     sendGame(updatedGameWithoutGameState)
     setSquaresToHighlight(null)
     return
   }
   const sendGame = (gameToSend) => {
       // Make a fetch request to the `/game/move` endpoint.
-      // const data = JSON.stringify({...props.gameInitData, players: convertPlayers(props.gameInitData.players)})
-
       fetch("http://127.0.0.1:5000/game/move", {
           method: 'POST',
           headers: {
@@ -162,6 +145,7 @@ const CheckersContainer = (props) => {
       .then((checkersGame) => {
           // Set the checkersGame state with the JSON response.
           props.setGame(checkersGame)
+          props.setGameLoading(false)
       })
       .catch((err) => {
           // Handle errors and show a user-friendly message.
@@ -169,7 +153,6 @@ const CheckersContainer = (props) => {
           alert('An error occurred while fetching the game data.')
       })
       setFirstMove(true)
-      // setSquaresToHighlight([])
   }
 
   const generateTable = () => {
@@ -269,9 +252,23 @@ const CheckersContainer = (props) => {
     setTable(generateTable())
   }, [squaresToHighlight, props.game])
 
+  useEffect(() => {
+    if (props.game.ai_players[0][0] && props.game.ai_players[0][1] && props.game.game_state[0]) {
+
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+      const sendGameToServer = async () => {
+        await delay(5000)
+        const {game_state, ...gameWithoutGameState} = props.game
+        props.setGameLoading(true)
+        sendGame(gameWithoutGameState)
+      }
+      sendGameToServer()
+    }
+  }, [props.game.pieces_turn])
+
   return (
-    <div id="game-container">
-      {/* <div>{JSON.stringify(props.game)}</div> */}
+    <div id="game-checkers-container">
       <table>
         <tbody>{table}</tbody>
       </table>
