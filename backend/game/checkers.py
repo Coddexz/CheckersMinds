@@ -1,4 +1,4 @@
-from minds import MindMinimax
+from .minds import MindMinimax
 import numpy as np
 import random
 from time import time, sleep
@@ -21,7 +21,7 @@ class Checkers:
         # Else, they can be int to store information about amount (custom) of pieces to create
         # If the board does not exist yet
         # if not board and not pieces_dark and not pieces_light:
-        if not board:
+        if board is None:
             self.board = np.empty(shape=(self.height, self.width), dtype=object)
             
             # Create pieces for the board, black <=> color=True
@@ -709,13 +709,13 @@ class Checkers:
     def single_move(self, models):
         """
         Use the right AI to make a single move on the board.
-        Returns 0 if the game is still playable, 1 if is finished
+        Returns game_state[:2] if the game is finished, True if playable
         """
         game_state = self.game_over_conditions()
         
         # If the game has finished
         if not game_state[0]:
-            return 1
+            return game_state[:2]
         
         # Get the right AI model
         ai_kind = self.ai_players[1][0] if self.pieces_turn else self.ai_players[1][1]
@@ -762,8 +762,8 @@ class Checkers:
         
         # If the game has finished
         if not game_state[0]:
-            return 1
-        return 0
+            return game_state[:2]
+        return game_state
     
     def train(self, models):
         """
@@ -1004,6 +1004,40 @@ class Checkers:
             print(f'  {nr_c}  ', end='')
         print('')
         return 0
+    
+    def to_dict(self):
+        """
+        Convert the game to a JSON serializable form
+        """
+        result = {}
+        for key, value in self.__dict__.items():
+            if key.startswith('__'):
+                continue
+            
+            if isinstance(value, (np.ndarray, np.generic)):
+                # temp = value.tolist()
+                temp = []
+                for row in value:
+                    for item in row:
+                        if isinstance(item, Piece):
+                            temp.append(item.id)
+                        else:
+                            temp.append(item)
+                value = temp
+                            
+            elif key == 'pieces_dark' or key == 'pieces_light':
+                temp = []
+                for item in value:
+                    temp.append((
+                        item.id,
+                        item.color,
+                        item.position,
+                        item.king
+                    ))
+                value = temp
+                
+            result[key] = value
+        return result
         
     
 class Piece():
