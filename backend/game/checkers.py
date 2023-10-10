@@ -525,7 +525,7 @@ class Checkers:
                     case 'deep_q_learning':
                         start_time_dql = time()
                         actions_list = [(piece, action, jump)
-                                        for piece in sorted(game_state[2].keys())
+                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
                                         for action, jump in sorted(game_state[2][piece])]
                         action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                         (piece, action, jump) = actions_list[action_number]
@@ -596,7 +596,7 @@ class Checkers:
                         case 'deep_q_learning':
                             start_time_dql = time()
                             actions_list = [(piece, action, jump)
-                                            for piece in sorted(game_state[2].keys())
+                                            for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
                                             for action, jump in sorted(game_state[2][piece])]
                             action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                             (piece, action, jump) = actions_list[action_number]
@@ -741,7 +741,7 @@ class Checkers:
                 
             case 'deep_q_learning':
                 actions_list = [(piece, action, jump)
-                                for piece in sorted(game_state[2].keys())
+                                for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
                                 for action, jump in sorted(game_state[2][piece])]
                 action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                 (piece, action, jump) = actions_list[action_number]
@@ -811,7 +811,7 @@ class Checkers:
                         
                     case 'deep_q_learning':
                         actions_list = [(piece, action, jump)
-                                        for piece in sorted(game_state[2].keys())
+                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
                                         for action, jump in sorted(game_state[2][piece])]
                         action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
                         (piece, action, jump) = actions_list[action_number]

@@ -365,7 +365,8 @@ class MindDeepQLearning:
         # self.target_update_counter = 0
         self.train_counter = 0
         # Initialise replay memory
-        self.replay_memory = deque(maxlen=6000)
+        # self.replay_memory = deque(maxlen=6000)
+        self.replay_memory = deque(maxlen=12800)
         
         # If the model does not exist yet create a new one
         if model_path is None:
@@ -417,11 +418,12 @@ class MindDeepQLearning:
         if len(self.replay_memory) != self.replay_memory.maxlen:
             return
         # Separate experiences into dark and light replay memories
-        dark_replay_memory = [experience for experience in self.replay_memory if experience[0][-1] == 1]
-        light_replay_memory = [experience for experience in self.replay_memory if experience[0][-1] == 0]
-
-        dark_batch = random.sample(dark_replay_memory, int(batch_size / 2))
-        light_batch = random.sample(light_replay_memory, int(batch_size / 2))
+        dark_batch = random.sample([experience for experience in self.replay_memory
+                              if experience[0][-1] == 1 and experience[1] < self.max_output_len],
+                                   int(batch_size / 2))
+        light_batch = random.sample([experience for experience in self.replay_memory
+                               if experience[0][-1] == 0 and experience[1] < self.max_output_len],
+                                    int(batch_size / 2))
 
         # Combine dark and light samples to create the batch
         batch = dark_batch + light_batch
@@ -461,8 +463,14 @@ class MindDeepQLearning:
                 
     def play(self, game):
         
-        total_reward = 0
+        # total_reward = 0
+        games_list = []
         game_state = game.game_over_conditions()
+        # ai_players = ('random', 'random')
+        if np.random.choice(a=[True, False], p=[0.5, 0.5]):
+            ai_players = ('deep_q_learning', 'random')
+        else:
+            ai_players = ('random', 'deep_q_learning')
         
 
         while game_state[0]:
@@ -470,11 +478,11 @@ class MindDeepQLearning:
             state_value = MindMinimax.utility(game.board)
             turn_color = game.pieces_turn
             actions_list = [(piece, action, jump)
-                            for piece in sorted(game_state[2].keys())
-                            for action, jump in sorted(game_state[2][piece])]
+                           for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
+                           for action, jump in sorted(game_state[2][piece])]
             
             # Adding a chance to minimax occurence, should add some diversity in training
-            if np.random.choice(a=[True, False], p=[0.35, 0.65]):
+            if ai_players[not turn_color] == 'minimax':
                 (m_piece, m_action, m_jump), _ = MindMinimax.minimax(game=game, game_state=game_state, max_depth=3,
                                                             alpha=float('-inf'), beta=float('inf'))
                 # Get the original piece to prevent problems
@@ -484,6 +492,9 @@ class MindDeepQLearning:
                         m_piece = i
                 action = (m_piece, m_action, m_jump)
                 action_number = actions_list.index(action)
+            elif (ai_players[not turn_color] == 'random'):
+                action_number = random.randrange(len(actions_list))
+                action = actions_list[action_number]
             else:
                 # Deep q learning move
                 action_number = self.choose_action(np.append(state, turn_color), actions_list)
@@ -511,20 +522,26 @@ class MindDeepQLearning:
                     reward = GAME_DRAW_DQL
                 else:
                     reward += GAME_WON
-                    
-            if len(self.replay_memory) >= 1:
-                # Subtract the last player's reward by score achieved thanks to the last player's move
-                self.replay_memory[-1][2] -= reward
+            games_list.append([state, turn_color, action_number, reward, next_state, not game_state[0]])
             
-            # Remember the experience
-            self.remember(state, turn_color, action_number, reward, next_state, done=not game_state[0])
-
-            # Train the model
+        for index, item in enumerate(games_list):
+            for index_rec, item_rec in enumerate(games_list):
+                if index_rec <= index:
+                    continue
+                if index % 2 == 0:
+                    if index_rec % 2 == 0:
+                        item[3] = item[3] + (item_rec[3] / (index_rec + 1 - index))
+                    else:
+                        item[3] = item[3] - (item_rec[3] / (index_rec + 1 - index))
+                else:
+                    if index_rec % 2 == 0:
+                        item[3] = item[3] - (item_rec[3] / (index_rec + 1 - index))
+                    else:
+                        item[3] = item[3] + (item_rec[3] / (index_rec + 1 - index))
+            self.remember(item[0], item[1], item[2], item[3], item[4], item[5])
+        while len(self.replay_memory) == self.replay_memory.maxlen:
             self.train(batch_size=32)
-
-            total_reward += reward
-            
-        return total_reward
+        return
     
     def model_save(self, name):
         self.q_network.save(name)
