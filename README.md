@@ -58,8 +58,8 @@ If you are having problems with the performance of the minimax algorithm, you ca
 
 Please note that Q-learning requires significant computational power and may not work effectively without access to high-performance hardware. You can modify the number of stored games by changing `Q_LEARNING_TRAINING_GAMES` in `checkers_minds_play.py`.
 
-The Deep Q-learning model is available in the GitHub folder. You can train your own model by deleting or renaming the existing `deep_q_model` in the `backend/game` directory. Adjust the training time using `DEEP_Q_LEARNING_TIME_LIMIT` in `checkers_minds_play.py`, where 1 unit represents 30 minutes. You can also enable additional training by changing the `TRAIN_MORE_DEEP_Q` option.
+The Deep Q-learning model is available in the GitHub folder. You can train your own model by deleting or renaming the existing `deep_q_model` in the `backend/game` directory. Adjust the training time using `DEEP_Q_LEARNING_TIME_LIMIT` in `checkers_minds_play.py` or `train_deep_q.py`, where 1 unit represents 30 minutes. You can also enable additional training by changing the `TRAIN_MORE_DEEP_Q` option.
 
-Deep Q-learning is functional, though it benefits from further optimization, which demands ample time, computational resources, rigorous testing, and a richer dataset of games played.
+Deep Q-learning performs poorly in Checkers Minds, due to a number of factors, including the size of the game and the computational cost of training. However, it has the potential to be improved with further optimization, ample time, computational resources, rigorous testing, and a richer dataset of games played.
 
 Enjoy your games with Checkers Minds!
