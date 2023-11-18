@@ -3,6 +3,7 @@ import random
 import tensorflow as tf
 import numpy as np
 from collections import deque
+import multiprocessing
 
 
 """
@@ -35,6 +36,16 @@ class MindMinimax:
         height, width = board.shape
         pieces, kings, position_edge, position_top = 0, 0, 0, 0
         row_no_value = height // 2
+        row_values = {k: 0 for k in range(height)}
+        row_value, index = - int((height - 2) / 2), 0
+        while index < height:
+            if index == row_no_value:
+                index += 1
+                continue
+            row_values[index] = row_value
+            row_value += 1
+            index += 1
+                
         
         for row in range(0, height):
             for col in range(0, width):
@@ -55,10 +66,13 @@ class MindMinimax:
                     if col == 0 or col == width - 1:
                         position_edge += 1
                     
-                    if row >= row_no_value:
-                        for index, item in enumerate(range(row_no_value, height, 1)):
-                            if row == item:
-                                position_top += index
+                    # Kings have the most power when they are in the centre of the board
+                    if square.king:
+                        if row == row_no_value or row == row_no_value - 1:
+                            position_top += 1
+                        continue
+                    # Regular pieces should move towards the edge of the board
+                    position_top += row_values[row]
                             
                 # Light pieces
                 else:
@@ -71,12 +85,15 @@ class MindMinimax:
                     # Points based on the piece position
                     if col == 0 or col == width - 1:
                         position_edge -= 1
+                    
+                    # Kings have the most power when they are in the centre of the board
+                    if square.king:
+                        if row == row_no_value or row == row_no_value - 1:
+                            position_top -= 1
+                        continue
+                    # Regular pieces should move towards the edge of the board
+                    position_top += row_values[row]
 
-                    if row < row_no_value:
-                        for index, item in enumerate(range(row_no_value - 1, -1, -1)):
-                            if row == item:
-                                position_top -= index
-                                
         return pieces * OWN_PIECE + kings * OWN_KING + position_edge * OWN_PIECE_ON_EDGE + position_top * OWN_PIECE_CLOSER_TOP
   
     @staticmethod
@@ -342,58 +359,36 @@ class MindDeepQLearning:
     Deep q learning model
     """
     
-    def __init__(self, input_length, max_output_len, target_update_interval, model_path=None, alpha=0.2,
-                 gamma=0.5, eps_min=0.01, eps_max=1.0, eps_dec=0.9995):
+    def __init__(self, input_length, max_output_len, model_path=None, alpha=0.2):
         """"
-        Initialise AI with a model, an alpha (learning rate),
-        gamma (discount factor) and epsilon rate.
-        Epsilon and alpha both have a max point, a decay rate, and a min point.
-        
+        Initialise a deep q model.
         The deep q-learning chooses the best action's index basing on a given state.
             - state is a tuple composed of values e.g. (0, 1, 1, 1 ...) details => Checkers.board_to_tuple()
             - action is a tuple composed of a piece, a move, and a boolean for
             jumping over an enemy piece, e.g. action=(0_dark, (4, 3), False)
         """
         self.alpha = alpha
-        self.gamma = gamma
-        self.eps_min = eps_min
-        self.eps_max = eps_max
-        self.eps_dec = eps_dec
-        self.epsilon = self.eps_max
         self.max_output_len = int(max_output_len)
-        self.target_update_interval = target_update_interval
-        # self.target_update_counter = 0
         self.train_counter = 0
-        # Initialise replay memory
-        # self.replay_memory = deque(maxlen=6000)
-        self.replay_memory = deque(maxlen=12800)
+        self.replay_memory = deque(maxlen=1600)
         
         # If the model does not exist yet create a new one
         if model_path is None:
             self.q_network = self.build_q_network(input_length, max_output_len)
-            # self.target_q_network = self.build_q_network(input_length, max_output_len)
         else:
-            self.epsilon = -1
             self.q_network = tf.keras.models.load_model(model_path)
-            # self.target_q_network = tf.keras.models.clone_model(self.q_network)
-            # self.target_q_network.set_weights(self.q_network.get_weights())
     
     def build_q_network(self, input_length, max_output_len):
         model = tf.keras.models.Sequential([
             tf.keras.layers.Input(shape=(input_length,)),
-            tf.keras.layers.Dense(256, activation='relu'),
-            tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Dense(128, activation='relu'),
-            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(64, activation='relu'),
-            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(max_output_len, activation='linear')
         ])
         model.compile(loss='mean_squared_error', optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=self.alpha))
         return model
-    
-    # def update_target_network(self):
-    #     self.target_q_network.set_weights(self.q_network.get_weights())
     
     def choose_action(self, state, valid_actions):
         """
@@ -401,87 +396,114 @@ class MindDeepQLearning:
         action = (piece, ((move), jump))
         The same q value means any of options is an acceptable return value
         """
-        if np.random.rand() <= self.epsilon:
-            return random.randrange(len(valid_actions))
         q_values = self.q_network.predict(state.reshape(1, -1))[0]
         valid_q_values = [q_values[action] if action in range(len(valid_actions)) else float('-inf')
                           for action in range(self.max_output_len)]
-        # print(valid_q_values)
         return np.argmax(valid_q_values)
-    
-    def remember(self, state, turn_color, action, reward, next_state, done):
-        state_with_color = np.append(state, turn_color)
-        next_state_with_color = np.append(next_state, turn_color)
-        self.replay_memory.append([state_with_color, action, reward, next_state_with_color, done])
         
     def train(self, batch_size):
         if len(self.replay_memory) != self.replay_memory.maxlen:
             return
         # Separate experiences into dark and light replay memories
         dark_batch = random.sample([experience for experience in self.replay_memory
-                              if experience[0][-1] == 1 and experience[1] < self.max_output_len],
+                              if experience[0].pieces_turn and len(experience[1]) < self.max_output_len],
                                    int(batch_size / 2))
         light_batch = random.sample([experience for experience in self.replay_memory
-                               if experience[0][-1] == 0 and experience[1] < self.max_output_len],
+                               if not experience[0].pieces_turn and len(experience[1]) < self.max_output_len],
                                     int(batch_size / 2))
-
+        
         # Combine dark and light samples to create the batch
         batch = dark_batch + light_batch
         random.shuffle(batch)
+        batch_with_calculated_moves = []
+        
+        # Create a pool of workers for parallel processing
+        pool = multiprocessing.Pool()
+        
+        args = tuple([((deepcopy(saved_game), {k: 0 for k in saved_game_actions}),)
+                      for saved_game, saved_game_actions in batch])
+        
+        # Calculate move values in parallel using the pool
+        results = (pool.starmap(MindDeepQLearning.calculate_move_value, args))
+        
+        for result in results:
+            batch_with_calculated_moves.append(result)
+        
+        # Close the pool after completing the tasks
+        pool.close()
+        pool.join()
         
         states, targets = [], []
-        for state, action, reward, next_state, done in batch:
-            target = reward
-            # if not done:
-            #     target = reward + self.gamma * np.amax(self.target_q_network.predict(next_state.reshape(1, -1))[0])
-                
-            target_q = self.q_network.predict(state.reshape(1, -1))
-            target_q[0][action] = target
+        for saved_game, saved_game_actions in batch_with_calculated_moves:
+            
+            # # Optional check
+            # (piece_m, move_m, jump_m), _ = MindMinimax.minimax(game=saved_game, game_state=saved_game.game_over_conditions(), max_depth=3,
+            #                                   alpha=float('-inf'), beta=float('inf'))
+            # best_action_minimax = (piece_m.id, move_m, jump_m)
+            # best_action_based_on_score = max(saved_game_actions, key=saved_game_actions.get)
+            
+            saved_game_actions_values = tuple(saved_game_actions.values())
+            board_tuple = saved_game.board_to_tuple()
+            
+            repetition_counter = 0
+            for board_r, turn_r, _ in saved_game.board_history:
+                if board_r == board_tuple:
+                    repetition_counter += 1
+            state = np.append(board_tuple, (saved_game.pieces_turn, len(saved_game_actions_values), repetition_counter))
+            
+            # Get values using neural networks and update them using Q value rule
+            # (gamma = 1, and so all future reward are already counted in)
+            # Q(s, a) = Q(s, a) + α * [R(s, a) + γ * max(Q(s', a')) - Q(s, a)]
+            target_q = self.q_network.predict(state.reshape(1, -1))[0]
+            target_q_updated = np.array([predicted_value + self.alpha * (saved_game_actions_values[index] - predicted_value)
+                                         if index < len(saved_game_actions_values) else -1e9
+                                         for index, predicted_value in enumerate(target_q)])
+            
+            # Check for NaN values
+            for i in (list(target_q) + list(target_q_updated)):
+                if not tf.math.is_finite(i).numpy():
+                    raise ValueError('NaN value found in the data!')
             
             states.append(state)
-            targets.append(target_q[0])
+            targets.append(target_q_updated)
             
         states = np.vstack(states)
         targets = np.vstack(targets)
             
-        self.q_network.fit(states, targets, epochs=1, verbose=0)
-            
-        # # Update the target network periodically
-        # self.target_update_counter += 1
-        # if self.target_update_counter % self.target_update_interval == 0:
-        #     self.update_target_network()
-        #     self.target_update_counter = 0
-            
-        if self.epsilon > self.eps_min:
-            self.epsilon *= self.eps_dec
+        self.q_network.fit(states, targets, epochs=8, verbose=0)
             
         # Clear replay_memory after reaching certain threshold
         self.train_counter += 1
-        if self.train_counter >= 400:
+        if self.train_counter >= 10:
             self.train_counter = 0
             self.replay_memory.clear()
                 
     def play(self, game):
         
-        # total_reward = 0
-        games_list = []
         game_state = game.game_over_conditions()
+        
+        # Ai players selection for training puproses
         # ai_players = ('random', 'random')
+        # ai_players = ('deep_q', 'deep_q')
         if np.random.choice(a=[True, False], p=[0.5, 0.5]):
-            ai_players = ('deep_q_learning', 'random')
+        #     # ai_players = ('minimax', 'random')
+            ai_players = ('random', 'deep_q')
+        #     ai_players = ('minimax', 'deep_q')
         else:
-            ai_players = ('random', 'deep_q_learning')
+        #     # ai_players = ('random', 'minimax')
+            ai_players = ('deep_q', 'random')
+        #     ai_players = ('deep_q', 'minimax')
         
 
         while game_state[0]:
             state = game.board_to_tuple()
-            state_value = MindMinimax.utility(game.board)
             turn_color = game.pieces_turn
             actions_list = [(piece, action, jump)
-                           for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
-                           for action, jump in sorted(game_state[2][piece])]
+                           for piece in sorted(game_state[2].keys(), key=lambda x: x.position, reverse=not turn_color)
+                           for action, jump in sorted(game_state[2][piece], reverse=not turn_color)]
+            self.replay_memory.append((deepcopy(game), tuple((action_data[0].id, *(action_data[1:])) for action_data in actions_list)))
             
-            # Adding a chance to minimax occurence, should add some diversity in training
+            # Choose model for state generation
             if ai_players[not turn_color] == 'minimax':
                 (m_piece, m_action, m_jump), _ = MindMinimax.minimax(game=game, game_state=game_state, max_depth=3,
                                                             alpha=float('-inf'), beta=float('inf'))
@@ -492,22 +514,21 @@ class MindDeepQLearning:
                         m_piece = i
                 action = (m_piece, m_action, m_jump)
                 action_number = actions_list.index(action)
+                
             elif (ai_players[not turn_color] == 'random'):
                 action_number = random.randrange(len(actions_list))
                 action = actions_list[action_number]
             else:
                 # Deep q learning move
-                action_number = self.choose_action(np.append(state, turn_color), actions_list)
+                repetition_counter = 0
+                for board_r, turn_r, _ in game.board_history:
+                    if board_r == state:
+                        repetition_counter += 1
+                action_number = self.choose_action(np.append(state, (turn_color, len(actions_list), repetition_counter)), actions_list)
                 action = actions_list[action_number]
             
-            # Perform the chosen action in the environment and observe the next state and reward
+            # Perform the chosen action in the environment and observe the next state
             game.make_move(move=action[1], jump=action[2], piece=action[0])
-            next_state = game.board_to_tuple()
-            # Count the reward basing on pieces color
-            if turn_color:
-                reward = MindMinimax.utility(game.board) - state_value
-            else:
-                reward = - (MindMinimax.utility(game.board) - state_value)
             
             # Save board and prepare game for the next player
             game.board_history.append((game.board_to_tuple(), game.pieces_turn, game.pieces_counter))
@@ -516,32 +537,107 @@ class MindDeepQLearning:
             # Check the state of the game
             game_state = game.game_over_conditions()
             
-            # Update reward if the game has ended
-            if not game_state[0]:
-                if game_state[1] == 0:
-                    reward = GAME_DRAW_DQL
-                else:
-                    reward += GAME_WON
-            games_list.append([state, turn_color, action_number, reward, next_state, not game_state[0]])
-            
-        for index, item in enumerate(games_list):
-            for index_rec, item_rec in enumerate(games_list):
-                if index_rec <= index:
-                    continue
-                if index % 2 == 0:
-                    if index_rec % 2 == 0:
-                        item[3] = item[3] + (item_rec[3] / (index_rec + 1 - index))
-                    else:
-                        item[3] = item[3] - (item_rec[3] / (index_rec + 1 - index))
-                else:
-                    if index_rec % 2 == 0:
-                        item[3] = item[3] - (item_rec[3] / (index_rec + 1 - index))
-                    else:
-                        item[3] = item[3] + (item_rec[3] / (index_rec + 1 - index))
-            self.remember(item[0], item[1], item[2], item[3], item[4], item[5])
+        # Train if the queue is full
         while len(self.replay_memory) == self.replay_memory.maxlen:
             self.train(batch_size=32)
         return
     
     def model_save(self, name):
         self.q_network.save(name)
+    
+    @staticmethod
+    def calculate_move_value(batch_item):
+        """
+        Requires batch_item consisting of game and a dict with possible moves.
+        Checks value for every move within the game object and
+        returns the unmodified game and the dict with added values.
+        """
+            
+        # Unpack batch_item and create the dict to store data
+        game, possible_moves_dict = batch_item
+        
+        game_state = game.game_over_conditions()
+        # Do not proceed if the game is finished
+        if not game_state[0]:
+            return
+
+        # Iterate over the first board
+        for piece in game_state[2].keys():
+            for action, jump in game_state[2][piece]:
+                # Initialise the copy
+                score = MindMinimax.utility(game.board)
+                turn_color = game.pieces_turn
+                game_copy_1 = deepcopy(game)
+                copied_pieces = game_copy_1.pieces_dark if turn_color else game_copy_1.pieces_light
+                for i in copied_pieces:
+                    if piece.id == i.id:
+                        piece = i
+                        break
+                action_dict_key = (piece.id, action, jump)
+                
+                # Make the move on the copy and save
+                game_copy_1.make_move(action, jump, piece)
+                game_copy_1.board_history.append((game_copy_1.board_to_tuple(), game_copy_1.pieces_turn, game_copy_1.pieces_counter))
+                game_copy_1.pieces_turn = False if game_copy_1.pieces_turn else True
+                
+                # Add the reward
+                score = MindMinimax.utility(game_copy_1.board) - score
+                if not turn_color: score *= -1
+                # Check the game_state
+                game_state_copy_1 = game_copy_1.game_over_conditions()
+                if not game_state_copy_1[0]:
+                    if game_state_copy_1[1] == 0:
+                        score += GAME_DRAW_DQL
+                    else:
+                        score += GAME_WON
+                else: 
+                    # Check next moves (subtract the second, because it's an enemy move)
+                    sim_depth = 2
+                    for simulated_game_number in range(sim_depth):
+                        # Save the score of the current board
+                        sim_cur_board = MindMinimax.utility(game_copy_1.board)
+                        sim_turn_color = game_copy_1.pieces_turn
+                        # Use minimax to find the best piece
+                        (sim_piece, sim_action, sim_jump), _ = MindMinimax.minimax(game=game_copy_1, game_state=game_state_copy_1,
+                                                                                max_depth=sim_depth - simulated_game_number,
+                                                                                alpha=float('-inf'), beta=float('inf'))
+                        # Get the original piece to prevent problems
+                        copied_pieces = game_copy_1.pieces_dark if sim_turn_color else game_copy_1.pieces_light
+                        for i in copied_pieces:
+                            if sim_piece.id == i.id:
+                                sim_piece = i
+                                break
+                        
+                        # Push the simulation forward
+                        # Make the move on the copy and save
+                        game_copy_1.make_move(sim_action, sim_jump, sim_piece)
+                        game_copy_1.board_history.append((game_copy_1.board_to_tuple(), game_copy_1.pieces_turn, game_copy_1.pieces_counter))
+                        game_copy_1.pieces_turn = False if game_copy_1.pieces_turn else True
+                        
+                        # Add the reward
+                        sim_score = MindMinimax.utility(game_copy_1.board) - sim_cur_board
+                        if not sim_turn_color: sim_score *= -1
+                        # Subtract if enemy
+                        if simulated_game_number % 2 == 0:
+                            score -= sim_score
+                        else:
+                            score += sim_score
+                        # Check the game_state
+                        game_state_copy_1 = game_copy_1.game_over_conditions()
+                        
+                        if not game_state_copy_1[0]:
+                            if game_state_copy_1[1] == 0:
+                                score += GAME_DRAW_DQL
+                                break
+                            else:
+                                # Subtract if the enemy has won
+                                if simulated_game_number % 2 == 0:
+                                    score -= GAME_WON
+                                else:
+                                    score += GAME_WON
+                                break
+                    
+                # Add the final score to the dict
+                possible_moves_dict[action_dict_key] = score
+                
+        return (game, possible_moves_dict)

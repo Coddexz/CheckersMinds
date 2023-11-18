@@ -7,7 +7,7 @@ from game.minds import MindDeepQLearning
 
 
 MINIMAX_MAX_DEPTH = 4
-DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'backend', 'game', 'deep_q_model')
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'game', 'deep_q_model')
 
 app = Flask('__name__')
 CORS(app)
@@ -28,9 +28,8 @@ def make_single_move(game):
         case 'deep_q_learning':
             model = {
                 ai_model_name: MindDeepQLearning(
-                input_length=len(game.board_to_tuple()) + 1,
+                input_length=len(game.board_to_tuple()) + 3,
                 max_output_len=game.pieces_counter,
-                target_update_interval=23,
                 model_path=DEEP_Q_LEARNING_MODEL_DIR)
                 }
         case _:

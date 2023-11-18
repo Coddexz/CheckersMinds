@@ -4,9 +4,9 @@ import os
 import time
 
 
-DEEP_Q_LEARNING_TIME_LIMIT = 3
-DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'backend', 'game', 'deep_q_model')
-DEEP_Q_LEARNING_MODEL_DIR_SAVE = os.path.join(os.getcwd(), 'backend', 'game', 'deep_q_model')
+DEEP_Q_LEARNING_TIME_LIMIT = 4
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(),'game', 'sm_ind_rew_repc_3r_2dr')
+DEEP_Q_LEARNING_MODEL_DIR_SAVE = os.path.join(os.getcwd(), 'game', 'sm_ind_rew_repc_3r_2dr_xx')
 
 
 def main():
@@ -15,11 +15,12 @@ def main():
     
     if not os.path.exists(DEEP_Q_LEARNING_MODEL_DIR):
         
-        ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
-                                            max_output_len=Checkers().pieces_counter,
-                                            target_update_interval=23)
+        ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 3,
+                                            max_output_len=Checkers().pieces_counter)
         
         while True:
+            if ai_deep_q_learning.train_counter == 0:
+                ai_deep_q_learning.model_save(f"{DEEP_Q_LEARNING_MODEL_DIR_SAVE}_emg")
             print(f'{deep_counter + 1} training game')
             game = Checkers()
             ai_deep_q_learning.play(game=game)
@@ -27,21 +28,20 @@ def main():
             deep_counter += 1
             if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                 break
-        ai_deep_q_learning.epsilon = -1
         ai_deep_q_learning.model_save(DEEP_Q_LEARNING_MODEL_DIR_SAVE)
-        print('Model saved')
+        print(f'Model saved to {DEEP_Q_LEARNING_MODEL_DIR_SAVE}')
         print(deep_counter)
             
     else:
-        ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
+        ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 3,
                                                 max_output_len=Checkers().pieces_counter,
-                                                target_update_interval=23,
                                                 model_path=DEEP_Q_LEARNING_MODEL_DIR)
-        print('Deep Q-learning model loaded')
+        print(f'Deep Q-learning model loaded. Path: {DEEP_Q_LEARNING_MODEL_DIR}')
         time.sleep(5)
-        ai_deep_q_learning.epsilon = 0.6
         
         while True:
+            if ai_deep_q_learning.train_counter == 0:
+                ai_deep_q_learning.model_save(f"{DEEP_Q_LEARNING_MODEL_DIR_SAVE}_emg")
             print(f'{deep_counter + 1} training game')
             game = Checkers()
             ai_deep_q_learning.play(game=game)
@@ -49,9 +49,8 @@ def main():
             deep_counter += 1
             if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                 break
-        ai_deep_q_learning.epsilon = -1
         ai_deep_q_learning.model_save(DEEP_Q_LEARNING_MODEL_DIR_SAVE)
-        print('Model saved')
+        print(f'Model saved to {DEEP_Q_LEARNING_MODEL_DIR_SAVE}')
         print(deep_counter)
         
 if __name__ == '__main__':

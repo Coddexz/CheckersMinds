@@ -525,9 +525,14 @@ class Checkers:
                     case 'deep_q_learning':
                         start_time_dql = time()
                         actions_list = [(piece, action, jump)
-                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
-                                        for action, jump in sorted(game_state[2][piece])]
-                        action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
+                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position, reverse=not self.pieces_turn)
+                                        for action, jump in sorted(game_state[2][piece], reverse=not self.pieces_turn)]
+                        repetition_counter = 0
+                        board_tuple = self.board_to_tuple()
+                        for board_r, turn_r, _ in self.board_history:
+                            if board_r == board_tuple:
+                                repetition_counter += 1
+                        action_number = models['deep_q_learning'].choose_action(np.append(board_tuple, (self.pieces_turn, len(actions_list), repetition_counter)), actions_list)
                         (piece, action, jump) = actions_list[action_number]
                         end_time_dql = time()
                         time_spent_dql = end_time_dql - start_time_dql
@@ -595,10 +600,19 @@ class Checkers:
                             
                         case 'deep_q_learning':
                             start_time_dql = time()
+                            # What would minimax do?
+                            (piece_min, action_min, jump_min), _ = MindMinimax.minimax(game=self, game_state=game_state, max_depth=3,
+                                                                        alpha=float('-inf'), beta=float('inf'))
+
                             actions_list = [(piece, action, jump)
-                                            for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
-                                            for action, jump in sorted(game_state[2][piece])]
-                            action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
+                                            for piece in sorted(game_state[2].keys(), key=lambda x: x.position, reverse=not self.pieces_turn)
+                                            for action, jump in sorted(game_state[2][piece], reverse=not self.pieces_turn)]
+                            repetition_counter = 0
+                            board_tuple = self.board_to_tuple()
+                            for board_r, turn_r, _ in self.board_history:
+                                if board_r == board_tuple:
+                                    repetition_counter += 1
+                            action_number = models['deep_q_learning'].choose_action(np.append(board_tuple, (self.pieces_turn, len(actions_list), repetition_counter)), actions_list)
                             (piece, action, jump) = actions_list[action_number]
                             end_time_dql = time()
                             time_spent_dql = end_time_dql - start_time_dql
@@ -611,6 +625,7 @@ class Checkers:
 
                     os.system('cls') if computer_system == 'Windows' else os.system('clear')
                     print(f'AI moved {piece} to {action}\n')
+                    if ai_kind == 'deep_q_learning': print('Minimax would move:', piece_min.id, 'to', action_min)
                         
                 # Human turn
                 else:
@@ -741,9 +756,14 @@ class Checkers:
                 
             case 'deep_q_learning':
                 actions_list = [(piece, action, jump)
-                                for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
-                                for action, jump in sorted(game_state[2][piece])]
-                action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
+                                for piece in sorted(game_state[2].keys(), key=lambda x: x.position, reverse=not self.pieces_turn)
+                                for action, jump in sorted(game_state[2][piece], reverse=not self.pieces_turn)]
+                repetition_counter = 0
+                board_tuple = self.board_to_tuple()
+                for board_r, turn_r, _ in self.board_history:
+                    if board_r == board_tuple:
+                        repetition_counter += 1
+                action_number = models['deep_q_learning'].choose_action(np.append(board_tuple, (self.pieces_turn, len(actions_list), repetition_counter)), actions_list)
                 (piece, action, jump) = actions_list[action_number]
                 
             case _:
@@ -811,9 +831,14 @@ class Checkers:
                         
                     case 'deep_q_learning':
                         actions_list = [(piece, action, jump)
-                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position)
-                                        for action, jump in sorted(game_state[2][piece])]
-                        action_number = models['deep_q_learning'].choose_action(np.append(self.board_to_tuple(), self.pieces_turn), actions_list)
+                                        for piece in sorted(game_state[2].keys(), key=lambda x: x.position, reverse=not self.pieces_turn)
+                                        for action, jump in sorted(game_state[2][piece], reverse=not self.pieces_turn)]
+                        repetition_counter = 0
+                        board_tuple = self.board_to_tuple()
+                        for board_r, turn_r, _ in self.board_history:
+                            if board_r == board_tuple:
+                                repetition_counter += 1
+                        action_number = models['deep_q_learning'].choose_action(np.append(board_tuple, (self.pieces_turn, len(actions_list), repetition_counter)), actions_list)
                         (piece, action, jump) = actions_list[action_number]
                         
                     case _:

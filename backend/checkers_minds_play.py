@@ -8,7 +8,7 @@ MINIMAX_MAX_DEPTH = 4
 Q_LEARNING_TRAINING_GAMES = 1000
 DEEP_Q_LEARNING_TIME_LIMIT = 2
 TRAIN_MORE_DEEP_Q = False
-DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'backend', 'game', 'deep_q_model')
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'game', 'deep_q_model')
 
 
 def main():
@@ -132,9 +132,8 @@ def main():
             # If there is no model present
             if not os.path.exists(DEEP_Q_LEARNING_MODEL_DIR):
                 time_start = time.time()
-                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
-                                                       max_output_len=Checkers().pieces_counter,
-                                                       target_update_interval=23)
+                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 3,
+                                                       max_output_len=Checkers().pieces_counter)
                 while True:
                     print(f'Deep_q_learning model playing training game {deep_counter + 1}')
                     game = Checkers()
@@ -143,14 +142,13 @@ def main():
                     deep_counter += 1
                     if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                         break
-                ai_deep_q_learning.epsilon = -1
                 ai_deep_q_learning.model_save('deep_q_model')
                 models['deep_q_learning'] = ai_deep_q_learning
             else:
-                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 1,
+                ai_deep_q_learning = MindDeepQLearning(input_length=len(Checkers().board_to_tuple()) + 3,
                                                        max_output_len=Checkers().pieces_counter,
-                                                       target_update_interval=23,
                                                        model_path=DEEP_Q_LEARNING_MODEL_DIR)
+                print(f'Deep Q loaded. Model path: {DEEP_Q_LEARNING_MODEL_DIR}')
                 if TRAIN_MORE_DEEP_Q:
                     time_start = time.time()
                     deep_counter = 0
@@ -163,7 +161,6 @@ def main():
                         deep_counter += 1
                         if elapsed_time >= 1800 * DEEP_Q_LEARNING_TIME_LIMIT:
                             break
-                    ai_deep_q_learning.epsilon = -1
                     ai_deep_q_learning.model_save('deep_q_model')
                     
                 ai_deep_q_learning.epsilon = -1
