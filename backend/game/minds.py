@@ -483,15 +483,15 @@ class MindDeepQLearning:
         game_state = game.game_over_conditions()
         
         # Ai players selection for training puproses
-        # ai_players = ('random', 'random')
+        ai_players = ('random', 'random')
         # ai_players = ('deep_q', 'deep_q')
-        if np.random.choice(a=[True, False], p=[0.5, 0.5]):
-        #     # ai_players = ('minimax', 'random')
-            ai_players = ('random', 'deep_q')
+        # if np.random.choice(a=[True, False], p=[0.5, 0.5]):
+        # #     # ai_players = ('minimax', 'random')
+        #     # ai_players = ('random', 'deep_q')
         #     ai_players = ('minimax', 'deep_q')
-        else:
-        #     # ai_players = ('random', 'minimax')
-            ai_players = ('deep_q', 'random')
+        # else:
+        # #     # ai_players = ('random', 'minimax')
+        #     # ai_players = ('deep_q', 'random')
         #     ai_players = ('deep_q', 'minimax')
         
 

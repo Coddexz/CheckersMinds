@@ -5,8 +5,8 @@ import time
 
 
 DEEP_Q_LEARNING_TIME_LIMIT = 4
-DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(),'game', 'sm_ind_rew_repc_3r_2dr')
-DEEP_Q_LEARNING_MODEL_DIR_SAVE = os.path.join(os.getcwd(), 'game', 'sm_ind_rew_repc_3r_2dr_xx')
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(),'game', 'deep_q_model')
+DEEP_Q_LEARNING_MODEL_DIR_SAVE = os.path.join(os.getcwd(), 'game', 'deep_q_model_2rr')
 
 
 def main():
