@@ -1,5 +1,5 @@
-from game.checkers import Checkers
-from game.minds import MindQLearning, MindDeepQLearning
+from backend.core.checkers import Checkers
+from backend.ai.minds import MindQLearning, MindDeepQLearning
 import os
 import time
 
@@ -8,7 +8,7 @@ MINIMAX_MAX_DEPTH = 4
 Q_LEARNING_TRAINING_GAMES = 1000
 DEEP_Q_LEARNING_TIME_LIMIT = 2
 TRAIN_MORE_DEEP_Q = False
-DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'game', 'deep_q_model')
+DEEP_Q_LEARNING_MODEL_DIR = os.path.join(os.getcwd(), 'ai', 'models', 'saved',  'deep_q_v1')
 
 
 def main():

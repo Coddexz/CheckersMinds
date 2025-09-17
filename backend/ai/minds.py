@@ -22,9 +22,9 @@ OWN_PIECE_CLOSER_TOP = 1
 
 class MindMinimax:
     """
-    Representation of an minimax algorithm with alpha beta pruning.
+    Representation of a minimax algorithm with alpha beta pruning.
     Returns the optimal action for the current player on the board.
-    The action is optimal for n moves in the game to make it more effiecent.
+    The action is optimal for n moves in the game to make it more efficient.
     """
     
     @staticmethod

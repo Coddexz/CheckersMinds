@@ -2,8 +2,8 @@ from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import os
 import numpy as np
-from game.checkers import Checkers, Piece
-from game.minds import MindDeepQLearning
+from backend.core.checkers import Checkers, Piece
+from backend.core import MindDeepQLearning
 
 
 MINIMAX_MAX_DEPTH = 4

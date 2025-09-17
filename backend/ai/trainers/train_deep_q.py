@@ -1,5 +1,5 @@
-from game.checkers import Checkers
-from game.minds import MindDeepQLearning
+from backend.core.checkers import Checkers
+from backend.core import MindDeepQLearning
 import os
 import time
 

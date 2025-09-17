@@ -1,8 +1,17 @@
-from .minds import MindMinimax
-import numpy as np
+import os
+import platform
 import random
 from time import time, sleep
-import os, platform
+
+import numpy as np
+
+from backend.ai.minds import MindMinimax
+from backend.core.piece import Piece
+
+
+HEIGHT = 6
+WIDTH = 6
+PIECES_PER_PLAYER = 6
 
 
 class Checkers:
@@ -10,8 +19,9 @@ class Checkers:
     Representation of the game
     """
     
-    def __init__(self, height=10, width=10, board=None, pieces_dark=20, pieces_light=20,
-                 ai_players=((False, True),(None, 'random')), pieces_turn=True, board_history=None):
+    def __init__(self, height=HEIGHT, width=WIDTH, board=None, pieces_dark: set[Piece] = None,
+                 pieces_light: set[Piece] = None, ai_players=((False, True),(None, 'random')), pieces_turn=True,
+                 board_history=None):
         self.height = height
         self.width = width
         self.ai_players = ai_players
@@ -25,9 +35,9 @@ class Checkers:
             self.board = np.empty(shape=(self.height, self.width), dtype=object)
             
             # Create pieces for the board, black <=> color=True
-            self.pieces_dark = {Piece(id=i, color=True) for i in range(int(pieces_dark))}
+            self.pieces_dark = {Piece(id=i, color=True) for i in range(PIECES_PER_PLAYER)}
             self.pieces_light = {Piece(id=i, color=False) for i in range(
-                int(pieces_dark),int(pieces_light) + int(pieces_dark))}
+                PIECES_PER_PLAYER,PIECES_PER_PLAYER + PIECES_PER_PLAYER)}
             self.pieces_counter = len(self.pieces_dark) + len(self.pieces_light)
             self.board_history = []
             
@@ -48,16 +58,15 @@ class Checkers:
         
         # Empty rows => 2 rows starting from the next row after the last dark piece
         # If there are too many pieces for the board => omit empty rows
-        if np.floor((self.board.size - 20) / self.pieces_counter) >= 2:
-            empty_row = int(np.ceil(dark_pieces_c / (self.width // 2)))
-            empty_rows = [empty_row, empty_row + 1]
+        if self.is_board_large_enough():
+            empty_rows = [self.height // 2 - 1, self.height // 2]
         else:
-            empty_rows = None
+            raise ValueError('Too many pieces')
             
         # Iterate over rows in the board
         for index_r in range(len(self.board)): 
             
-            # Ommit 2 empty rows
+            # Omit 2 empty rows
             if empty_rows:
                 if index_r in empty_rows:
                     continue
@@ -83,7 +92,7 @@ class Checkers:
                                     break
                         else:
                             # Change the row if the row is occupied with any black piece already
-                            if any(i.color == True for i in self.board[index_r] if i != None):
+                            if any(i.color == True for i in self.board[index_r] if i is not None):
                                 continue
                             # Set the right piece on the board
                             for i in self.pieces_light: 
@@ -124,7 +133,7 @@ class Checkers:
                                     break
                         else:
                             # Change the row if the row is occupied with any black piece already
-                            if any(i.color == True for i in self.board[index_r] if i != None):
+                            if any(i.color == True for i in self.board[index_r] if i is not None):
                                 continue
                             # Set the right piece on the board
                             for i in self.pieces_light: 
@@ -165,289 +174,113 @@ class Checkers:
         # Get the right player
         player = self.pieces_turn
         # Function checking for multiple jumps
-        def check_multiple_jumps(piece, piece_pos, piece_king, defeated_pieces,
-                                 piece_multi_jumps, jump_series=None):
+        def check_multiple_jumps(piece: Piece, piece_pos: tuple, defeated_pieces: set,
+                                 piece_multi_jumps: list, jump_series: list = None):
             # At the beginning append the possible jump to the series
-            if jump_series == None:
+            if jump_series is None:
                 jump_series = []
             jump_series.append((piece_pos[0], piece_pos[1]))
             jump_counter = 0
-            
-            if not piece_king:
-                # Iterate over every possible next movement
-                for n_row in [-1, 1]:
-                    for n_col in [-abs(n_row), abs(n_row)]:
-                        allowed_row, allowed_col = piece_pos[0] + n_row, piece_pos[1] + n_col
-                        
-                        # If not within board bounadaries
-                        if not (0 <= allowed_row < self.height and 0 <= allowed_col < self.width):
-                            continue
-                        
-                        # Only different enemy piece is a valid possibility to move
-                        next_square = self.board[allowed_row][allowed_col]
-                        # If next_square is the current piece => treat it as an empty square
-                        if next_square == piece:
-                            next_square = None
-                            
-                        if isinstance(next_square, Piece) and next_square.color != player and \
-                            next_square not in defeated_pieces:
-                            # Check if the square behind enemy is empty
-                            bh_n_row, bh_n_col = allowed_row + n_row, allowed_col + n_col
-                            
-                            # If not within board bounadaries
-                            if not (0 <= bh_n_row < self.height and 0 <= bh_n_col < self.width):
-                                continue
-                            # If the square behind is an empty square or the current piece =>
-                            # => start the function again
-                            # Add enemy piece to defeated list, to not to fall into infinite an loop
-                            elif self.board[bh_n_row][bh_n_col] is None or \
-                                self.board[bh_n_row][bh_n_col] == piece:
-                                jump_counter += 1
-                                defeated_pieces.add(next_square)
-                                
-                                # Every jump keeps information about the list containing all the series,
-                                # every time create a new jump_series and defeated_pieces series and
-                                # pass them, to keep series specific data 
-                                check_multiple_jumps(
-                                    piece=piece,
-                                    piece_pos=(bh_n_row, bh_n_col),
-                                    piece_king=False,
-                                    piece_multi_jumps=piece_multi_jumps,
-                                    jump_series=[i for i in jump_series],
-                                    defeated_pieces={i for i in defeated_pieces})
 
-                # If there was no possible jump => store the series in main list with all jumps
-                if jump_counter == 0:
-                    piece_multi_jumps.append(jump_series)
-                
-                return piece_multi_jumps
-                                
-            # If a king
-            else:
-                # Iterate over every possible next movement
-                for n_row in [i for i in range(-self.height + 1, self.height) if i != 0]:
-                    for n_col in [-abs(n_row), abs(n_row)]:
-                        allowed_row, allowed_col = piece_pos[0] + n_row, piece_pos[1] + n_col
-                        eq_al_row = 1 if n_row > 0 else -1
-                        eq_al_col = 1 if n_col > 0 else -1
-                        
-                        # If not within board bounadaries
-                        if not (0 <= allowed_row < self.height and 0 <= allowed_col < self.width):
+            # Iterate over every possible next movement
+            for n_row in [-1, 1]:
+                for n_col in [-abs(n_row), abs(n_row)]:
+                    allowed_row, allowed_col = piece_pos[0] + n_row, piece_pos[1] + n_col
+
+                    # If not within board boundaries
+                    if not (0 <= allowed_row < self.height and 0 <= allowed_col < self.width):
+                        continue
+
+                    # Only different enemy piece is a valid possibility to move
+                    next_square = self.board[allowed_row][allowed_col]
+                    # If next_square is the current piece => treat it as an empty square
+                    if next_square == piece:
+                        next_square = None
+
+                    if isinstance(next_square, Piece) and next_square.color != player and \
+                        next_square not in defeated_pieces:
+                        # Check if the square behind enemy is empty
+                        bh_n_row, bh_n_col = allowed_row + n_row, allowed_col + n_col
+
+                        # If not within board boundaries
+                        if not (0 <= bh_n_row < self.height and 0 <= bh_n_col < self.width):
                             continue
-                        
-                        # Only different enemy piece is a valid possibility to move
-                        next_square = self.board[allowed_row][allowed_col]
-                        # if piece_king and piece_pos[0] == 4 and piece_pos[1] == 3 and len(jump_series) == 4 and (allowed_row == 5 or allowed_row == 2):
-                        #     print('Yeah')
-                        # If next_square is the current piece => treat it as an empty square
-                        if next_square == piece:
-                            next_square = None
-                            
-                        if isinstance(next_square, Piece) and next_square.color != player and \
-                            next_square not in defeated_pieces:
-                                
-                            # Check whether the previous squares are empty if the square is not adjacent
-                            if abs(piece_pos[0] - allowed_row) > 1:
-                                # Create presumption of correctness
-                                correct = True
-                                temp_mov_r = (piece_pos[0], piece_pos[1])
-                                # As long as it is a valid move, equalise position
-                                while abs(allowed_row - temp_mov_r[0]) > 1:
-                                    temp_mov_r = (temp_mov_r[0] + eq_al_row, temp_mov_r[1] + eq_al_col)
-                                    # To jump over the other player's piece, squares before have to be empty
-                                    if self.board[temp_mov_r[0]][temp_mov_r[1]] is not None and \
-                                        self.board[temp_mov_r[0]][temp_mov_r[1]] is not piece:
-                                        correct = False
-                                        break
-                                    
-                                # If not correct king move
-                                if not correct:
-                                    continue
-                                    
-                            # Check if the square behing enemy is empty
-                            bh_n_row, bh_n_col = allowed_row + eq_al_row, allowed_col + eq_al_col
-                            
-                            # Add every possible move (single jump)
-                            while 0 <= bh_n_row < self.height and 0 <= bh_n_col < self.width and \
-                                (self.board[bh_n_row][bh_n_col] is None or
-                                 self.board[bh_n_row][bh_n_col] is piece):
-                                    jump_counter += 1
-                                    defeated_pieces.add(next_square)
+                        # If the square behind is an empty square or the current piece =>
+                        # => start the function again
+                        # Add enemy piece to defeated list, to not fall into infinite a loop
+                        elif self.board[bh_n_row][bh_n_col] is None or \
+                            self.board[bh_n_row][bh_n_col] == piece:
+                            jump_counter += 1
+                            defeated_pieces.add(next_square)
+
                             # Every jump keeps information about the list containing all the series,
                             # every time create a new jump_series and defeated_pieces series and
-                            # pass them, to keep series specific data 
-                                    check_multiple_jumps(
-                                        piece=piece,
-                                        piece_pos=(bh_n_row, bh_n_col),
-                                        piece_king=True,
-                                        piece_multi_jumps=piece_multi_jumps,
-                                        jump_series=[i for i in jump_series],
-                                        defeated_pieces={i for i in defeated_pieces})
-                                    # Check next square
-                                    bh_n_row += eq_al_row
-                                    bh_n_col += eq_al_col
-                                    
+                            # pass them, to keep series specific data
+                            check_multiple_jumps(
+                                piece=piece,
+                                piece_pos=(bh_n_row, bh_n_col),
+                                piece_multi_jumps=piece_multi_jumps,
+                                jump_series=[i for i in jump_series],
+                                defeated_pieces={i for i in defeated_pieces})
 
-                # If there was no possible jump => store the series in main list with all jumps
-                if jump_counter == 0:
-                    piece_multi_jumps.append(jump_series)
-                
-                return piece_multi_jumps
+            # If there was no possible jump => store the series in main list with all jumps
+            if jump_counter == 0:
+                piece_multi_jumps.append(jump_series)
+
+            return piece_multi_jumps
+
         
         # Get the right set of pieces
         pieces = self.pieces_dark if player else self.pieces_light
         possible_moves = dict()
+        back_row = 1 if player else -1
         
         # Iterate over every piece and check for possible moves
         for piece in pieces:
             # Get the position
             row, col = piece.position[0], piece.position[1]
-            
-            # Check possible moves for uncrowned pieces
-            if not piece.king:
                 
-                # Temporary store possible moves of a piece
-                piece_free_moves = set()
-            
-                # Get and check every selected square for an important move
-                # For every row check, for the same +- number of columns to move diagonally
-                for d_row in [-1, 1]:
-                    for d_col in [-abs(d_row), abs(d_row)]:
-                        sel_row = row + d_row
-                        sel_col = col + d_col
-                        
-                        # Check if the selected position is within the board boundaries
-                        if 0 <= sel_row < self.height and 0 <= sel_col < self.width:
-                            selected_square = self.board[sel_row][sel_col]
-                            
-                            # Check whether the square is empty, occupied by enemy or meaningless
-                            if selected_square is None:
-                                piece_free_moves.add(((sel_row, sel_col), False))
-                                
-                            elif isinstance(selected_square, Piece) and selected_square.color != player:
-                                
-                                # Check if the square behind the enemy is empty
-                                bh_enemy_sel_row, bh_enemy_sel_col = sel_row + d_row, sel_col + d_col
-                                
-                                # Check if the square is within the board boundaries
-                                if 0 <= bh_enemy_sel_row < self.height and 0 <= bh_enemy_sel_col < self.width and \
-                                    self.board[bh_enemy_sel_row][bh_enemy_sel_col] is None:
-                                        
-                                    # Check for multiple jumps
-                                    # Create a list to store all possible jumps (finished =>
-                                    # => not possible to jump anymore)
-                                    # Start the recursion with crucial information like position, is king and
-                                    # defeated piece
-                                    
-                                    all_beating_jumps = check_multiple_jumps(piece=piece,
-                                                        piece_pos=(bh_enemy_sel_row, bh_enemy_sel_col),
-                                                         defeated_pieces={selected_square},
-                                                         piece_multi_jumps=[], piece_king=False)
-                                    # Add every move according to the schema
-                                    for jump in all_beating_jumps:
-                                        piece_free_moves.add((tuple(jump), True))
-                        
-            # Check moves for kings
-            else:
-            
-                # Temporary store possible moves of a piece
-                piece_free_moves = set()
-                
-                # Get and check every selected square for an important move
-                # For every row check, for the same +- number of columns to move diagonally
-                for d_row in [i for i in range(-self.height + 1, self.height) if i != 0]:
-                    for d_col in [-abs(d_row), abs(d_row)]:
-                        sel_row = row + d_row
-                        sel_col = col + d_col
-                        # Choose the sign for equalising
-                        row_eq = 1 if d_row > 0 else -1
-                        col_eq = 1 if d_col > 0 else -1
-                    
-                        # Check if the selected position is within the board boundaries
-                        # and the position is not already added
-                        if 0 <= sel_row < self.height and 0 <= sel_col < self.width and \
-                            not any(move_jump[0] == (sel_row, sel_col) for move_jump in piece_free_moves):
-                            selected_square = self.board[sel_row][sel_col]
-                        
-                            # Check whether the square is empty, occupied by enemy or meaningless
-                            if selected_square is None:
-                                
-                                # If this is a long move, check every empty square
-                                # Initialise empty set for optimisation
-                                right_moves = set()
-                                temp_mov = (row, col)
-                                # As long as it is a move and has not been added, equalise positions
-                                while abs(sel_row - temp_mov[0]) >= 1:
-                                    temp_mov = (temp_mov[0] + row_eq, temp_mov[1] + col_eq)
-                                    # Add moves to empty squares only
-                                    if self.board[temp_mov[0]][temp_mov[1]] is None:
-                                        # Add only if wasn't added earlier
-                                        if (temp_mov, False) not in piece_free_moves:
-                                            right_moves.add(temp_mov)
-                                        else:
-                                            continue
-                                    else:
-                                        break
-                                        
-                                # Add possible empty square moves,
-                                # every move is right as the loop start from the piece's position
-                                for move in right_moves:
-                                    piece_free_moves.add((move, False))
-                            
-                            # If a piece meets a piece of the other player
-                            elif isinstance(selected_square, Piece) and selected_square.color != player:
-                                
-                                # Check whether the previous squares are empty if the square is not adjacent
-                                if abs(row - sel_row) > 1:
-                                    # Initialise empty set for optimisation and create presumption of correctness
-                                    right_moves = set()
-                                    correct = True
-                                    temp_mov = (row, col)
-                                    # As long as it is a move and has not been spotted before, equalise position
-                                    while abs(sel_row - temp_mov[0]) > 1:
-                                        temp_mov = (temp_mov[0] + row_eq, temp_mov[1] + col_eq)
-                                        # To jump over the other player's piece, squares before have to be empty
-                                        # Do not consider already know empty squares
-                                        if (temp_mov, False) in piece_free_moves:
-                                            continue
-                                        elif self.board[temp_mov[0]][temp_mov[1]] is not None:
-                                            correct = False
-                                            break
-                                        right_moves.add(temp_mov)
-                                        
-                                    # Add possible empty square moves,
-                                    # every move is right as the loop start from the piece's position,
-                                    # value=False, because it checks squares before the enemy piece
-                                    for move in right_moves:
-                                        piece_free_moves.add((move, False))
-                                        
-                                    # If not correct king move
-                                    if not correct:
-                                        continue
-                                
-                                # Check if the square behind the enemy is empty
-                                bh_enemy_sel_row, bh_enemy_sel_col = sel_row + row_eq, sel_col + col_eq
-                                    
-                                # Add every possible move (single jump)
-                                while 0 <= bh_enemy_sel_row < self.height and 0 <= bh_enemy_sel_col < self.width and \
-                                    self.board[bh_enemy_sel_row][bh_enemy_sel_col] is None:
-                                    # Check for multiple jumps
-                                    # Create a list to store all possible jumps (finished =>
-                                    # => not possible to jump anymore)
-                                    # Start the recursion with crucial information like position, is king and
-                                    # defeated piece
-                                    
-                                    all_beating_jumps = check_multiple_jumps(piece=piece,
-                                                         piece_pos=(bh_enemy_sel_row, bh_enemy_sel_col),
-                                                         defeated_pieces={selected_square},
-                                                         piece_multi_jumps=[], piece_king=True)
-                                    # Add every move according to the schema
-                                    for jump in all_beating_jumps:
-                                        piece_free_moves.add((tuple(jump), True))
-                                    # piece_free_moves.add(((bh_enemy_sel_row, bh_enemy_sel_col), True))
-                                    # Check next square
-                                    bh_enemy_sel_row += row_eq
-                                    bh_enemy_sel_col += col_eq
+            # Temporary store possible moves of a piece
+            piece_free_moves = set()
+
+            # Get and check every selected square for an important move
+            # For every row check, for the same +- number of columns to move diagonally
+            for d_row in [-1, 1]:
+                for d_col in [-abs(d_row), abs(d_row)]:
+                    sel_row = row + d_row
+                    sel_col = col + d_col
+
+                    # Check if the selected position is within the board boundaries
+                    if 0 <= sel_row < self.height and 0 <= sel_col < self.width:
+                        selected_square = self.board[sel_row][sel_col]
+
+                        # Check whether the front square is empty, any square occupied by enemy or meaningless
+                        # King can move backward, piece cannot
+                        if selected_square is None and (d_row == back_row or piece.king):
+                            piece_free_moves.add(((sel_row, sel_col), False))
+
+                        elif isinstance(selected_square, Piece) and selected_square.color != player:
+
+                            # Check if the square behind the enemy is empty
+                            bh_enemy_sel_row, bh_enemy_sel_col = sel_row + d_row, sel_col + d_col
+
+                            # Check if the square is within the board boundaries
+                            if 0 <= bh_enemy_sel_row < self.height and 0 <= bh_enemy_sel_col < self.width and \
+                                self.board[bh_enemy_sel_row][bh_enemy_sel_col] is None:
+
+                                # Check for multiple jumps
+                                # Create a list to store all possible jumps (finished =>
+                                # => not possible to jump anymore)
+                                # Start the recursion with crucial information like position, is king and
+                                # defeated piece
+
+                                all_beating_jumps = check_multiple_jumps(piece=piece,
+                                                    piece_pos=(bh_enemy_sel_row, bh_enemy_sel_col),
+                                                     defeated_pieces={selected_square}, piece_multi_jumps=[])
+                                # Add every move according to the schema
+                                for jump in all_beating_jumps:
+                                    piece_free_moves.add((tuple(jump), True))
+
 
                             # else:
                             #     # print('Invalid move')
@@ -462,11 +295,22 @@ class Checkers:
         # only with or without jumping over enemy piece
         jumping = any(move[1] for moves in possible_moves.values() for move in moves)
         if jumping:
-            return {piece: {move for move in moves if move[1]}
-                    for piece, moves in possible_moves.items()
-                    if any(move[1] for move in moves)}
+            jumping_moves = {
+                piece: {move for move in moves if move[1]}
+                for piece, moves in possible_moves.items()
+                if any(move[1] for move in moves)
+            }
+
+            jl = lambda mv: (
+                len(mv[0]) if isinstance(mv[0], tuple) and isinstance(mv[0][0], tuple) else 1)
+            max_jump = max(jl(m) for moves in jumping_moves.values() for m in moves)
+
+            return {
+                piece: {m for m in moves if jl(m) == max_jump}
+                for piece, moves in jumping_moves.items()
+            }
         return possible_moves
-    
+
     # Let's play a game
     def play(self, models):
         
@@ -479,7 +323,7 @@ class Checkers:
         # Check how many AI is in the game
         # AI plays against itself
         if all(self.ai_players[0]):
-            # Get the ai settings
+            # Get the AI settings
             dark_ai = (self.ai_players[0][0], self.ai_players[1][0])
             light_ai = (self.ai_players[0][1], self.ai_players[1][1])
             
@@ -938,17 +782,17 @@ class Checkers:
             # The opposite player wins
             # 1(True) <=> Dark, 0(False) <=> Light
             winner = -1 if self.pieces_turn else 1
-            return (False, winner, possible_moves)
+            return False, winner, possible_moves
         
         if self.pieces_counter == 2 and len(self.pieces_dark) == len(self.pieces_light):
             for piece_dark, piece_light in zip(self.pieces_dark, self.pieces_light):
                 if piece_dark.king and piece_light.king:
-                    return (False, winner, None)
+                    return False, winner, None
                 
         # Min amount to threefold to happen
         if len(self.board_history) >= 9:
             
-            # Update the board history to delete all unnecesary computations
+            # Update the board history to delete all unnecessary computations
             self.board_history = [position for position in self.board_history if position[2] == self.board_history[-1][2]]
             if len(self.board_history) >= 9:
                 repetition_count = {}
@@ -984,7 +828,7 @@ class Checkers:
                 # print(self.board_history[-1][2])
                 
         # If still in game
-        return (True, winner, possible_moves)
+        return True, winner, possible_moves
     
     # Convert numpy array to tuple with a simple representation
     def board_to_tuple(self, board=None):
@@ -1018,7 +862,7 @@ class Checkers:
             for square in row:
                 if square is None:
                     print('|   |', end='')
-                elif square.color == True:
+                elif square.color:
                     print(f'|d{square.id:02d}|', end='')
                 else:
                     print(f'|l{square.id:02d}|', end='')
@@ -1063,19 +907,14 @@ class Checkers:
                 
             result[key] = value
         return result
-        
-    
-class Piece():
-    
-    def __init__(self, id, color, position=None, king=False):
-        self.id = id
-        self.color = color
-        self.position = position
-        self.king = king
-    
-    def __repr__(self):
-        return f'{self.id}_{"light" if not self.color else "dark"}'
-    
-    def __lt__(self, other):
-        # Define the comparison logic based on the 'id' attribute
-        return self.id < other.id
+
+    def is_board_large_enough(self):
+        """
+        Checks if the board is large enough to accommodate all the pieces.
+        """
+        rows_needed_per_player = self.height // 2 - 1
+        cols_needed_per_player = self.width // 2
+        available_squares = rows_needed_per_player * cols_needed_per_player * 2
+
+        # The board is large enough if the total number of pieces is less than or equal to the available squares
+        return self.pieces_counter <= available_squares
